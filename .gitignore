@@ -12,12 +12,6 @@ dist
 dist-ssr
 *.local
 
-# Temporary download artifacts
-# FontshareKit-2609000315.zip is an EMPTY (22-byte) download stub — the
-# Telma font it was meant to contain is integrated under
-# public/themes/theme-1/fonts/telma/ and tracked normally.
-FontshareKit-2609000315.zip
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -45,10 +45,61 @@ function reconcile(stored: unknown): InvitationData {
   return out as unknown as InvitationData;
 }
 
+/* ── Legacy asset-path migration ──────────────────────────────
+   Before the Theme 1 reorganisation, media lived at /video/, /audio/
+   and /fonts/ (some with different filenames). A browser whose
+   localStorage holds an invitation saved back then would keep
+   requesting the DELETED paths (persisted data wins over defaults).
+   This rewrites any known legacy path to its new location so old
+   saved data — music.src, venue.image, event images, gallery entries —
+   keeps working without the user clearing storage. Strings that merely
+   start with an old prefix but are not a known file are left alone. */
+const LEGACY_ASSET_PATHS: Record<string, string> = {
+  "/video/couple-bg.mp4": "/themes/theme-1/videos/couple-background.mp4",
+  "/video/gate-cinematic.mp4": "/themes/theme-1/videos/gate-cinematic.mp4",
+  "/video/poster.jpg": "/themes/theme-1/images/cover.jpg",
+  "/video/couple-poster.jpg": "/themes/theme-1/images/couple-poster.jpg",
+  "/video/ganeshaicon.png": "/themes/theme-1/images/ganesha.png",
+  "/video/scratch.png": "/themes/theme-1/images/scratch.png",
+  "/video/wedding-hands.png": "/themes/theme-1/images/wedding-hands.png",
+  "/audio/newsong.mp3": "/themes/theme-1/audio/wedding-music.mp3",
+  "/fonts/telma/Telma-Bold.woff2": "/themes/theme-1/fonts/telma/Telma-Bold.woff2",
+};
+
+function migrateLegacyPaths(value: unknown, changed = { hit: false }): unknown {
+  if (typeof value === "string") {
+    const next = LEGACY_ASSET_PATHS[value];
+    if (next !== undefined) {
+      changed.hit = true;
+      return next;
+    }
+    return value;
+  }
+  if (Array.isArray(value)) {
+    return value.map((v) => migrateLegacyPaths(v, changed));
+  }
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = migrateLegacyPaths(v, changed);
+    }
+    return out;
+  }
+  return value;
+}
+
 function load(): InvitationData {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return reconcile(JSON.parse(raw));
+    if (raw) {
+      const data = reconcile(JSON.parse(raw));
+      const changed = { hit: false };
+      const migrated = migrateLegacyPaths(data, changed) as InvitationData;
+      // persist the clean copy once, only if a legacy path was actually
+      // rewritten — otherwise leave storage untouched
+      if (changed.hit) persist(migrated);
+      return migrated;
+    }
   } catch {
     // Corrupted data — fall back to defaults.
   }

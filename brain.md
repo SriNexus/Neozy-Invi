@@ -85,10 +85,10 @@ section in order.
 Google Fonts import in index.css: Allura, Cinzel, Cormorant, Cormorant
 Garamond, Cormorant SC, Fraunces (variable: opsz/SOFT/WONK), Petit Formal
 Script, Playfair Display. Self-hosted: Telma Bold (Fontshare / Indian
-Type Foundry, ITF Free Font License) at `public/fonts/telma/` — single
-Bold 700 face, woff2 only, registered in index.css as `--font-couple-custom`,
-applied ONLY to the CoupleIntro name wordmarks (the "Telma experiment").
-Original download zip kept at project root (FontshareKit-2609000315.zip).
+Type Foundry, ITF Free Font License) at `public/themes/theme-1/fonts/telma/` —
+single Bold 700 face, woff2 only, registered in index.css as
+`--font-couple-custom`, applied ONLY to the CoupleIntro name wordmarks
+(the "Telma experiment").
 
 Three-voice system (overridden by themes via useThemeApplication → CSS vars):
 - `--font-couple` = **Fraunces** — IDENTITY: date numeral "12", event titles,
@@ -118,6 +118,10 @@ for legibility — never glow/outline/gradient text.
   **persisted to localStorage key `neozy-invi:invitation-data`**; stored data
   is merged over defaults and WINS. ⚠️ Changing a default in invitation.ts
   won't show for a browser with a cached copy — admin "reset" or clear the key.
+  Since the Theme-1 asset reorganisation, `load()` also runs a legacy-path
+  migration (`migrateLegacyPaths`): any stored `/video/`, `/audio/`,
+  `/fonts/` path from before the move is rewritten to its
+  `/themes/theme-1/...` location and the clean copy is persisted once.
 - `src/data/themes.ts` — ThemeConfig (palette/fonts/assets/motifs/layout/
   paperWorld/ornamentation/motion); `getTheme(id)`, `useActiveTheme()`,
   `useThemeApplication()` sets CSS vars on document root.
