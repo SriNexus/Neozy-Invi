@@ -1,0 +1,576 @@
+/* Allura and Petit Formal Script were removed from this import — the
+   couple names now use the self-hosted Telma Bold face, and nothing
+   else referenced either script. */
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Cormorant+SC:wght@500;600;700&family=Fraunces:opsz,wght,SOFT,WONK@9..144,400..600,0..100,0..1&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+@import "tailwindcss";
+
+/* ─── Self-hosted display font: Telma Bold ───
+   Fontshare / Indian Type Foundry (ITF Free Font License, see
+   public/themes/theme-1/fonts/telma/FFL.txt). The kit ships a single Bold (700),
+   normal-style face — no regular/light, no italic, no variable font —
+   so it is registered at its true weight only, never faked.
+   woff2 covers every evergreen mobile browser; nothing else is shipped.
+   Consumed exclusively by the CoupleIntro name wordmarks via
+   `--font-couple-custom`. */
+@font-face {
+  font-family: 'Telma';
+  src: url('/themes/theme-1/fonts/telma/Telma-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ─── Design Tokens ─── */
+:root {
+  /* Dark palette (kept for cover/video/admin) */
+  --ink: #0b0c0e;
+  --ink-deep: #06070a;
+  --ivory: #f4efe4;
+  --ivory-dim: #cfc7b6;
+  --gold: #c9a869;
+  --gold-soft: #e3cd9a;
+  --gold-dim: #8a7449;
+  color-scheme: dark;
+
+  /* Light invitation palette */
+  --card-bg: #faf7f0;
+  --card-bg-warm: #f5f0e4;
+  --card-shadow: rgba(120, 100, 60, 0.12);
+  --card-shadow-deep: rgba(80, 60, 30, 0.18);
+  --card-border: rgba(180, 155, 100, 0.25);
+  --card-border-inner: rgba(180, 155, 100, 0.15);
+  --text-primary: #2c2520;
+  --text-secondary: #6b5e50;
+  --text-tertiary: #9a8c7a;
+  --gold-invite: #b8943f;
+  --gold-invite-light: #d4b86a;
+  --gold-invite-dim: #a08540;
+  --accent-glow: rgba(200, 170, 100, 0.15);
+
+  /* Typography (theme-overridable) */
+  --font-display: 'Playfair Display', serif;
+  --font-script: 'Cormorant Garamond', serif;
+  --font-body: 'Cormorant Garamond', serif;
+  --font-sc: 'Cormorant SC', serif;
+  /* ── THREE-VOICE type system for the two cinematic sections ──
+     One coherent system, three deliberate registers.
+
+     --font-couple   : IDENTITY voice — the two couple names and the one
+                       date numeral, nothing else. Fraunces: a warm,
+                       characterful high-contrast serif with real
+                       personality at display size — the "luxury editorial"
+                       feel without the generic-wedding-serif look. Set in
+                       TITLE CASE, minimal tracking; the letterforms carry
+                       it, never effects.
+     --font-engrave  : SYMBOLIC voice — the month wordmark and the
+                       countdown figures. Cormorant, a clear step quieter
+                       than the identity voice.
+     --font-invite-label : SUPPORTING voice — small-caps Cormorant for
+                       parent lines, Save-the-Date, weekday, every micro
+                       label. Quieter again. */
+  --font-couple: 'Fraunces', 'Cormorant Garamond', Georgia, serif;
+  --font-engrave: 'Cormorant', 'Cormorant Garamond', Georgia, serif;
+  --font-invite-label: 'Cormorant SC', 'Cormorant Garamond', Georgia, serif;
+  /* The couple-name wordmark face — self-hosted Telma Bold. Kept
+     separate from `--font-couple` (Fraunces) so this experiment can be
+     applied ONLY to the CoupleIntro names without touching the date /
+     events numerals. Cormorant Garamond is the serif fallback while
+     the woff2 loads (font-display: swap). */
+  --font-couple-custom: 'Telma', 'Cormorant Garamond', Georgia, serif;
+
+  /* World B ground (theme-overridable) */
+  --paper-world: radial-gradient(ellipse 80% 50% at 50% 0%, #fbf7ee 0%, #f3ecdc 55%, #ece1c9 100%);
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  background: var(--ink);
+  overscroll-behavior: none;
+}
+
+body {
+  overflow-x: hidden;
+}
+
+/* NO global scroll-behavior: smooth here — deliberately.
+   The reel pager (useReelPager) drives document scrolling by assigning
+   scrollTop every animation frame; per CSSOM View, an assignment honors
+   the element's computed scroll-behavior, so a global `smooth` turns
+   every one of those writes into a browser-animated scroll. On real
+   mobile browsers the compositor re-targets and fights the pager's own
+   easing, the final glide outlives the JS transition lock (scene
+   skipping), and the pager's "instant" rest-align becomes animated and
+   interruptible. The one place smooth scrolling is wanted (the intro's
+   golden-arrow scrollIntoView) passes its own `behavior` explicitly. */
+
+/* ─── Full-screen reel navigation ───
+   The invitation's cinematic reel (Couple, Date, Celebrations, each
+   ceremony, the Couple Photo album) is navigated by ONE JavaScript
+   scene system — `useReelPager` (src/lib/useReelPager.ts) — driven by
+   wheel + touch with gesture thresholds, a transition lock and scene
+   boundaries. Every full-screen scene is a normal-flow 100dvh section
+   marked `data-reel-scene` and carries its OWN background, so an
+   entire scene (background + foreground) moves together.
+
+   There is intentionally NO CSS scroll-snap here: proximity snapping
+   could not guarantee that a rest is always exactly one scene, could
+   not stop one wheel burst from skipping several scenes, and would
+   fight the pager's own aligned glides. Below the album (Venue → RSVP
+   → Closing) scrolling is ordinary page scrolling; nothing snaps. */
+
+body {
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Every full-screen reel scene reserves its VERTICAL axis for the
+   pager's JS gesture handling: with default `auto` touch-action, a real
+   mobile browser can begin a native vertical pan before the pager's
+   claim lands, and once a native pan is in flight preventDefault can no
+   longer stop it (Android honors touch-action strictly; iOS uses it
+   advisory). `pan-x pinch-zoom` keeps horizontal panning and pinch-zoom
+   native, and leaves vertical panning to JavaScript. The photo album's
+   own stage narrows this to `none` (both axes are JS-owned there — the
+   carousel owns horizontal, the pager owns vertical). Paper sections
+   below the reel (Venue → RSVP → Closing) keep full native scrolling
+   (default auto). */
+[data-reel-scene] {
+  touch-action: pan-x pinch-zoom;
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-sc {
+  font-family: var(--font-sc);
+}
+
+.font-script {
+  font-family: var(--font-script);
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ─── Paper Grain Texture ─── */
+.paper-grain::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 200px 200px;
+  z-index: 1;
+}
+
+/* ─── Card Material ─── */
+.card-material {
+  background:
+    linear-gradient(135deg, rgba(255,252,245,0.6) 0%, rgba(245,240,228,0.4) 50%, rgba(250,247,240,0.5) 100%),
+    var(--card-bg);
+  box-shadow:
+    0 2px 8px var(--card-shadow),
+    0 8px 32px var(--card-shadow),
+    0 20px 60px var(--card-shadow-deep),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+  border: 1px solid var(--card-border);
+}
+
+/* ─── Ambient Particles ─── */
+.ambient-particle {
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--gold-invite-light) 0%, transparent 70%);
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+    opacity: 0;
+  }
+  12% { opacity: var(--p-max-o, 0.4); }
+  50% {
+    transform: translate3d(var(--p-dx, 15px), var(--p-dy, -80px), 0) scale(1.15);
+    opacity: var(--p-max-o, 0.4);
+  }
+  88% { opacity: var(--p-max-o, 0.4); }
+  100% {
+    transform: translate3d(var(--p-dx2, -10px), var(--p-dy2, -160px), 0) scale(0.85);
+    opacity: 0;
+  }
+}
+
+/* ─── Text Reveal ─── */
+.reveal-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(6px);
+  filter: blur(3px);
+  will-change: opacity, transform, filter;
+}
+
+.reveal-line {
+  opacity: 0;
+  transform: translateY(10px);
+  filter: blur(2px);
+  will-change: opacity, transform, filter;
+}
+
+@keyframes charReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes lineReveal {
+  0% {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(2px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* ─── Card Entry ─── */
+@keyframes cardEntry {
+  0% {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+    filter: blur(1px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* ─── Border Illumination ─── */
+@keyframes borderGlow {
+  0% { opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { opacity: 0.25; }
+}
+
+/* ─── Ornamental shimmer sweep ─── */
+@keyframes shimmerSweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* ─── Background atmosphere drift ─── */
+@keyframes atmosphereDrift {
+  0% { transform: scale(1) translate3d(0, 0, 0); }
+  33% { transform: scale(1.01) translate3d(-0.3%, -0.2%, 0); }
+  66% { transform: scale(1.005) translate3d(0.2%, 0.1%, 0); }
+  100% { transform: scale(1) translate3d(0, 0, 0); }
+}
+
+/* ─── Scroll Cue ─── */
+@keyframes scrollBounce {
+  0%, 100% { opacity: 0.28; transform: translateY(0); }
+  50% { opacity: 0.72; transform: translateY(4px); }
+}
+
+.scroll-cue-chevron {
+  display: block;
+  animation: scrollBounce 2.2s ease-in-out infinite;
+}
+
+/* ─── Intro → Card resolve ─── */
+@keyframes introBloom {
+  0% { opacity: 0; transform: scale(0.6); }
+  35% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+
+@keyframes introRing {
+  0% { opacity: 0.7; transform: scale(1); }
+  100% { opacity: 0; transform: scale(9); }
+}
+
+/* ─── Scratch cover surface (the painted PNG canvas) ─── */
+.scratch-surface {
+  touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: crosshair;
+  overscroll-behavior: contain;
+}
+
+.scratch-surface::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes revealPop {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.03);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-reveal-pop {
+  animation: revealPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes revealGlow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(184, 148, 63, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(184, 148, 63, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(184, 148, 63, 0);
+  }
+}
+
+.animate-reveal-glow {
+  animation: revealGlow 1s ease both;
+}
+
+@keyframes fadeSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-slide-up {
+  animation: fadeSlideUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Date settles directly onto the artwork (no card) ───
+   A soft rise + a whisper of scale, nothing that "pops". */
+@keyframes dateSettle {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.965);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+.animate-date-settle {
+  animation: dateSettle 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* ─── Existing Keyframes ─── */
+@keyframes breathe {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.015); }
+}
+
+@keyframes driftSlow {
+  0% { transform: translate3d(0,0,0) scale(1.02); }
+  50% { transform: translate3d(-1%, -0.6%, 0) scale(1.04); }
+  100% { transform: translate3d(0,0,0) scale(1.02); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes ringPulse {
+  0% { transform: scale(1); opacity: 0.55; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+/* ─── Utility Classes ─── */
+.animate-breathe { animation: breathe 6s ease-in-out infinite; }
+.animate-drift-slow { animation: driftSlow 18s ease-in-out infinite; }
+.animate-fade-up { animation: fadeUp 1.1s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+.animate-card-entry {
+  animation: cardEntry 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-char-reveal {
+  animation: charReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-line-reveal {
+  animation: lineReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-border-glow {
+  animation: borderGlow 1.5s ease both;
+}
+
+.animate-atmosphere {
+  animation: atmosphereDrift 30s ease-in-out infinite;
+}
+
+/* ─── Directions action — a refined printed-ticket link ─── */
+.directions-action {
+  transition: border-color 0.3s ease, color 0.3s ease, background 0.3s ease;
+}
+
+.directions-action:hover,
+.directions-action:focus-visible {
+  border-color: rgba(184, 148, 63, 0.95);
+  color: var(--gold-invite-dim);
+  background: rgba(184, 148, 63, 0.08);
+}
+
+.directions-action:active {
+  background: rgba(184, 148, 63, 0.14);
+}
+
+/* ─── Celebration Particles ─── */
+@keyframes celebrationFall {
+  0% {
+    transform: translateY(-20px) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) translateX(var(--celeb-dx, 30px)) rotate(var(--celeb-rot, 360deg));
+    opacity: 0;
+  }
+}
+
+@keyframes celebrationFade {
+  0% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ─── Prefers Reduced Motion ─── */
+@media (prefers-reduced-motion: reduce) {
+  .reveal-char,
+  .reveal-line {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+    animation: none !important;
+  }
+
+  .animate-card-entry,
+  .animate-char-reveal,
+  .animate-line-reveal,
+  .animate-border-glow,
+  .animate-atmosphere,
+  .animate-breathe,
+  .animate-drift-slow,
+  .animate-fade-up,
+  .scroll-cue-chevron,
+  .animate-reveal-pop,
+  .animate-reveal-glow,
+  .animate-fade-slide-up {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+
+  .ambient-particle {
+    display: none !important;
+  }
+
+  .scratch-surface {
+    cursor: default !important;
+  }
+
+  .celebration-particle {
+    display: none !important;
+  }
+}
+
+/* ─── Section Reveal Animations ─── */
+@keyframes sectionFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes sectionScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-section-fade-up {
+  animation: sectionFadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-section-scale-in {
+  animation: sectionScaleIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* ─── Admin Panel Styles ─── */
+.admin-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  outline: none;
+  font-size: 0.875rem;
+  font-family: inherit;
+  background: rgba(0, 0, 0, 0.3);
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: border-color 0.2s ease;
+}
+
+.admin-input:focus {
+  border-color: rgba(201, 168, 105, 0.5);
+  box-shadow: 0 0 0 2px rgba(201, 168, 105, 0.1);
+}
+
+.admin-input::placeholder {
+  color: #6b7280;
+}

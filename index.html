@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <!-- Preload the couple-name face: it is fetched during the cover /
+         gate-film phase, long before the names type on at ~7s, so the
+         reveal never swaps from the fallback serif mid-animation. -->
+    <link rel="preload" as="font" type="font/woff2" href="/themes/theme-1/fonts/telma/Telma-Bold.woff2" crossorigin />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wedding Invitation — NEOZY-INVI</title>
+    <meta name="description" content="You are invited to celebrate a wedding." />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
