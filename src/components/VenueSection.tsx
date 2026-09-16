@@ -34,7 +34,13 @@ export default function VenueSection({
   const theme = useActiveTheme();
   const { ref, inView } = useInView<HTMLDivElement>();
   const [imgOk, setImgOk] = useState(true);
-  const hasImage = !!venue.image && imgOk;
+  /* The section's ground: the theme's own venue artwork, unless the
+     invitation carries a venue photograph of its own (an upload or a
+     venue-specific image) — that always wins. Either way it sits behind
+     the same legibility veil and the same ivory type, so the page reads
+     as one designed composition. Theme-owned, never a path here. */
+  const art = venue.image || theme.assets.venueImage;
+  const hasImage = !!art && imgOk;
   const corners = ["tl", "tr", "br", "bl"] as const;
 
   return (
@@ -42,12 +48,15 @@ export default function VenueSection({
       className="relative w-full overflow-hidden"
       style={{ minHeight: "92dvh", padding: "clamp(64px,12vw,110px) clamp(20px,5vw,40px)" }}
     >
-      {/* photographic backdrop, if supplied */}
+      {/* the section's artwork — full-bleed behind the content, moving
+          with the section, with the warm-to-deep veil that keeps the
+          ivory type legible on any painting */}
       {hasImage && (
         <div className="absolute inset-0">
           <img
-            src={venue.image}
+            src={art}
             alt=""
+            aria-hidden="true"
             onError={() => setImgOk(false)}
             className="w-full h-full object-cover"
           />

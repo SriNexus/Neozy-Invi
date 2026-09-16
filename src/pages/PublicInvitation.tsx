@@ -37,11 +37,12 @@ import { useReelPager } from "../lib/useReelPager";
  *   at the back; the semi-transparent later sections (Venue → Closing)
  *   read against it once the full-screen reel has scrolled away.
  *
- * The full-screen reel — COUPLE ↓ DATE ↓ CELEBRATIONS ↓ EVENTS ↓ ALBUM —
- * is navigated by ONE coherent scene system (useReelPager): a deliberate
- * swipe or wheel gesture moves exactly one complete scene (background and
- * foreground together), a rest is always one whole scene, and after the
- * album the page hands off to normal scrolling for the paper sections.
+ * The full-screen reel — COUPLE ↓ DATE ↓ CELEBRATIONS ↓ EVENTS ↓ ALBUM
+ * (one full-screen PHOTOGRAPH per gesture) — is navigated by ONE coherent
+ * scene system (useReelPager): a deliberate swipe or wheel gesture moves
+ * exactly one complete scene (background and foreground together), a rest
+ * is always one whole scene, and after the album's LAST photograph the
+ * page hands off to normal scrolling for the paper sections.
  *
  * Sound: the gate film is silent; one looping background track is the only
  * audio, started inside the guest's tap, then only muted/unmuted.
@@ -274,8 +275,11 @@ export default function PublicInvitation() {
         {/* CELEBRATIONS + EVENTS — each ceremony is its own scene */}
         <EventsSection events={invitation.events} />
 
-        {/* THE ALBUM — the final reel scene; normal scrolling resumes
-            after it (Venue → RSVP → Closing read as paper sections) */}
+        {/* THE ALBUM — the reel's closing photo sequence: ONE complete
+            full-screen photograph per scene, consumed one gesture at a
+            time, with no carousel controls anywhere. Normal scrolling
+            resumes after the LAST photograph (Venue → RSVP → Closing
+            read as paper sections). */}
         <CouplePhotoExperience images={invitation.gallery} couple={invitation.couple} />
 
         <VenueSection venue={invitation.venue} layout={theme.layout.venueFallback} />

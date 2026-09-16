@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Countdown from "./Countdown";
 import CelebrationParticles from "./CelebrationParticles";
+import ScrollCue from "./ScrollCue";
 
 type Phase = "sealed" | "revealed" | "settled";
 
@@ -33,6 +34,12 @@ const COVER_H = 996;
    the reading. */
 const REVEAL_THRESHOLD = 0.5;
 
+/* how long the cover takes to dissolve once the threshold is crossed.
+   The canvas transition and the DOM removal use the SAME number, so the
+   cover is already fully transparent when it leaves — the hand-off to
+   the date and the countdown never shows a cut. */
+const FADE_MS = 900;
+
 /* how many sampled points of the canvas are still opaque (alpha > 128).
    Same stride for the baseline snapshot and every later read, so the
    ratio between them is a faithful "fraction erased". */
@@ -42,6 +49,20 @@ function countOpaque(data: Uint8ClampedArray): number {
     if (data[i] > 128) n++;
   }
   return n;
+}
+
+/* The rocking wrapper's CURRENT tilt, in radians. Read from the computed
+   style — a running CSS animation is reflected there — and parsed from the
+   matrix. The rock keyframes are rotation-only, so this is always a 2D
+   matrix and `atan2(b, a)` is exactly the angle applied. */
+function tiltOf(el: HTMLElement | null): number {
+  if (!el) return 0;
+  const t = window.getComputedStyle(el).transform;
+  if (!t || t === "none") return 0;
+  const m = /matrix\(([^)]+)\)/.exec(t);
+  if (!m) return 0; // matrix3d — never produced by the rock animation
+  const p = m[1].split(",").map(Number);
+  return Math.atan2(p[1], p[0]);
 }
 
 /* ───────────────────────────────────────────────────────────────
@@ -55,18 +76,27 @@ function countOpaque(data: Uint8ClampedArray): number {
 function ScratchCover({
   onFirstScratch,
   onRevealStart,
-  onComplete,
+  onCoverGone,
+  dismiss = false,
+  reduceMotion,
   ariaLabel,
 }: {
   onFirstScratch: () => void;
   /** fired the instant the ~50% threshold is crossed — the parent starts
-   *  the warm bloom + sprinkles NOW, in parallel with the cover fade, so
-   *  there is no visible cut between states */
+   *  the date settle, the warm bloom and the celebration NOW, in parallel
+   *  with the cover fade, so there is no visible cut between states */
   onRevealStart: () => void;
-  onComplete: () => void;
+  /** fired once the cover has FULLY dissolved and may leave the DOM */
+  onCoverGone: () => void;
+  /** the guest chose the "or tap to reveal" assist — dissolve the cover
+   *  down the same path instead of cutting it away */
+  dismiss?: boolean;
+  reduceMotion: boolean;
   ariaLabel: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const shellRef = useRef<HTMLDivElement | null>(null); // the rocking wrapper
+  const tilt = useRef(0); // the wrapper's tilt, captured for the live stroke
   const drawing = useRef(false);
   const last = useRef<{ x: number; y: number } | null>(null);
   const done = useRef(false);
@@ -75,6 +105,9 @@ function ScratchCover({
   const lastSample = useRef(0);
   const baseOpaque = useRef(0); // opaque sample count of the freshly-painted cover
   const [fading, setFading] = useState(false);
+  // the rock HOLDS (pauses exactly where it is — no snap) while the guest
+  // is scratching and while the cover dissolves
+  const [hold, setHold] = useState(false);
 
   /* paint the cover in, sized to the canvas' own pixel box (which
      carries the PNG's exact aspect ratio, so no distortion). Redraws
@@ -92,10 +125,12 @@ function ScratchCover({
 
     const paint = () => {
       if (cancelled || done.current) return;
-      const rect = parent.getBoundingClientRect();
+      // offsetWidth/Height, NOT the bounding box: the wrapper rocks, and a
+      // rotated element's bounding box is larger than the box it occupies.
+      // The cover has to be fitted (and later mapped) to the LAYOUT box.
       const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      const w = Math.max(1, Math.round(rect.width * dpr));
-      const h = Math.max(1, Math.round(rect.height * dpr));
+      const w = Math.max(1, Math.round(parent.offsetWidth * dpr));
+      const h = Math.max(1, Math.round(parent.offsetHeight * dpr));
       if (canvas.width !== w || canvas.height !== h) {
         canvas.width = w;
         canvas.height = h;
@@ -119,8 +154,14 @@ function ScratchCover({
     if (img.complete && img.naturalWidth > 0) paint();
     else {
       img.onload = paint;
-      // if the cover can't load, don't trap the guest behind it
-      img.onerror = () => { if (!cancelled) onComplete(); };
+      // if the cover can't load, don't trap the guest behind it — run the
+      // normal reveal and take the cover out
+      img.onerror = () => {
+        if (!cancelled) {
+          onRevealStart();
+          onCoverGone();
+        }
+      };
     }
 
     const ro = new ResizeObserver(() => {
@@ -132,7 +173,9 @@ function ScratchCover({
       cancelled = true;
       ro.disconnect();
     };
-  }, [onComplete]);
+    // both callbacks are stable (ref-guarded / setter-only), so this effect
+    // paints the cover exactly once — never re-painting over the guest's work
+  }, [onRevealStart, onCoverGone]);
 
   /* fraction of the cover's originally-opaque gold that has been erased */
   const sampleCoverage = useCallback(() => {
@@ -150,13 +193,35 @@ function ScratchCover({
     return erased < 0 ? 0 : erased > 1 ? 1 : erased;
   }, []);
 
+  /* the ONE dissolve — the cover fades to nothing over exactly FADE_MS
+     and only then leaves the DOM, so the guest never sees the gold cut
+     out from under the date mid-frame */
+  const gone = useRef(false);
+  const dissolve = useCallback(() => {
+    if (gone.current) return;
+    gone.current = true;
+    setFading(true);
+    window.setTimeout(onCoverGone, FADE_MS);
+  }, [onCoverGone]);
+
+  // the assist path ("or tap to reveal") dissolves on the same path
+  useEffect(() => {
+    if (dismiss) dissolve();
+  }, [dismiss, dissolve]);
+
+  // once the rock has actually been paused (the style is committed), take
+  // the EXACT tilt it froze at — so the pointer maths and the pixels the
+  // guest sees agree to the pixel, not to within a frame of drift
+  useEffect(() => {
+    if (hold) tilt.current = tiltOf(shellRef.current);
+  }, [hold]);
+
   const finish = useCallback(() => {
     if (done.current) return;
     done.current = true;
-    onRevealStart(); // bloom + sprinkles begin immediately …
-    setFading(true); // … while the cover dissolves (opacity 1 → 0) …
-    window.setTimeout(onComplete, 900); // … and the date settles under it
-  }, [onComplete, onRevealStart]);
+    onRevealStart(); // the reveal begins immediately …
+    dissolve(); // … while the cover dissolves over FADE_MS …
+  }, [onRevealStart, dissolve]);
 
   const strokeAt = useCallback(
     (x: number, y: number) => {
@@ -211,47 +276,106 @@ function ScratchCover({
     [sampleCoverage, onFirstScratch, finish],
   );
 
+  /* ── finger → canvas pixel ──────────────────────────────────────
+     The canvas is never transformed; it lives inside a wrapper that
+     ROCKS (rotates about its own centre) while the guest is being
+     invited to scratch. A rotation about the centre leaves the centre
+     itself fixed, so the tilt can be undone exactly:
+
+       · the bounding-box centre IS the layer's centre,
+       · the layout size comes from offsetWidth/Height (a transform never
+         changes those), and
+       · rotating the finger's delta from the centre by -tilt maps it
+         back into the layer's own space.
+
+     So the finger scratches exactly where it touches, whatever the tilt
+     happens to be at that instant. The tilt is captured once per stroke
+     (the rock holds while the finger is down), so no per-move style
+     reads are needed. */
   const toCanvas = (e: React.PointerEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
+    const w = canvas.offsetWidth;
+    const h = canvas.offsetHeight;
+    if (!rect.width || !rect.height || !w || !h) return null;
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const a = tilt.current;
+    const cos = Math.cos(a);
+    const sin = Math.sin(a);
+    const dx = e.clientX - cx;
+    const dy = e.clientY - cy;
+    const lx = cos * dx + sin * dy; // inverse rotation about the centre
+    const ly = -sin * dx + cos * dy;
     return {
-      x: (e.clientX - rect.left) * (canvas.width / rect.width),
-      y: (e.clientY - rect.top) * (canvas.height / rect.height),
+      x: (lx + w / 2) * (canvas.width / w),
+      y: (ly + h / 2) * (canvas.height / h),
     };
   };
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="scratch-surface absolute inset-0 w-full h-full"
+    /* The ROCK lives on a WRAPPER, never on the canvas: the canvas keeps its
+       own untransformed geometry, the wrapper only tilts the painted
+       surface in its own place (rotation about its centre — no travel, no
+       bounce), and the tilt is undone in `toCanvas`. The wrapper is the
+       canvas' parent, so the paint effect above still measures and fits
+       the same box. */
+    <div
+      ref={shellRef}
+      className="absolute inset-0"
       style={{
-        touchAction: "none",
-        opacity: fading ? 0 : 1,
-        transition: "opacity 0.9s ease",
-        filter: "drop-shadow(0 6px 20px rgba(60,42,16,0.28))",
+        animation: reduceMotion ? "none" : "scratchRock 2.8s ease-in-out infinite",
+        // hold, don't jerk: the surface freezes where it is under the finger
+        // and while the cover dissolves
+        animationPlayState: hold || fading ? "paused" : "running",
+        willChange: "transform",
       }}
-      onPointerDown={(e) => {
-        if (done.current) return;
-        e.preventDefault();
-        (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-        drawing.current = true;
-        last.current = null;
-        const p = toCanvas(e);
-        if (p) strokeAt(p.x, p.y);
-      }}
-      onPointerMove={(e) => {
-        if (!drawing.current || done.current) return;
-        e.preventDefault();
-        const p = toCanvas(e);
-        if (p) strokeAt(p.x, p.y);
-      }}
-      onPointerUp={() => { drawing.current = false; last.current = null; }}
-      onPointerCancel={() => { drawing.current = false; last.current = null; }}
-      role="img"
-      aria-label={ariaLabel}
-    />
+    >
+      <canvas
+        ref={canvasRef}
+        className="scratch-surface absolute inset-0 w-full h-full"
+        style={{
+          touchAction: "none",
+          opacity: fading ? 0 : 1,
+          // once the dissolve starts the surface stops claiming pointers, so
+          // the reel gesture is never swallowed by a cover that is leaving
+          pointerEvents: fading ? "none" : "auto",
+          transition: `opacity ${FADE_MS}ms ease`,
+          filter: "drop-shadow(0 6px 20px rgba(60,42,16,0.28))",
+        }}
+        onPointerDown={(e) => {
+          if (done.current) return;
+          e.preventDefault();
+          // freeze the rock for the stroke and capture the tilt it froze at
+          tilt.current = tiltOf(shellRef.current);
+          setHold(true);
+          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+          drawing.current = true;
+          last.current = null;
+          const p = toCanvas(e);
+          if (p) strokeAt(p.x, p.y);
+        }}
+        onPointerMove={(e) => {
+          if (!drawing.current || done.current) return;
+          e.preventDefault();
+          const p = toCanvas(e);
+          if (p) strokeAt(p.x, p.y);
+        }}
+        onPointerUp={() => {
+          drawing.current = false;
+          last.current = null;
+          setHold(false); // the rock resumes from exactly where it held
+        }}
+        onPointerCancel={() => {
+          drawing.current = false;
+          last.current = null;
+          setHold(false);
+        }}
+        role="img"
+        aria-label={ariaLabel}
+      />
+    </div>
   );
 }
 
@@ -350,13 +474,26 @@ export default function DateReveal({
   reduceMotion,
 }: Props) {
   const [phase, setPhase] = useState<Phase>(reduceMotion ? "settled" : "sealed");
+  const [coverMounted, setCoverMounted] = useState(!reduceMotion);
+  const [dismissCover, setDismissCover] = useState(false);
   const [started, setStarted] = useState(false);
   const [showAssist, setShowAssist] = useState(false);
   const [entered, setEntered] = useState(reduceMotion);
   const [bloom, setBloom] = useState(false); // brief warm light across the art
   const [sprinkle, setSprinkle] = useState(false); // brief celebratory particles
+  const [showScrollCue, setShowScrollCue] = useState(false); // date scene's scroll invitation
   const sectionRef = useRef<HTMLElement | null>(null);
   const bloomTimers = useRef<number[]>([]);
+
+  /* The phase read from inside STABLE callbacks (a ref, not state): the
+     scratch canvas reads its callbacks once and must never be re-painted
+     — a changing callback identity would re-run its paint effect and
+     wipe the guest's scratching. */
+  const phaseRef = useRef<Phase>(reduceMotion ? "settled" : "sealed");
+  const goPhase = useCallback((next: Phase) => {
+    phaseRef.current = next;
+    setPhase(next);
+  }, []);
 
   const canScratch = useMemo(() => {
     try {
@@ -394,35 +531,38 @@ export default function DateReveal({
   }, [phase, reduceMotion]);
 
   // one coordinated cinematic reveal — no state "cuts". Fired the instant
-  // the scratch threshold is crossed, it runs in parallel with the cover
-  // dissolving: warm bloom + sprinkles begin, the date settles, then the
-  // light recedes — slowly, like sunlight passing across the painting —
-  // so the countdown eases in at NORMAL, full brightness. The bloom never
-  // "switches off" (its exit is a long, gentle ease that finishes just as
-  // the countdown completes); the final settled scene carries no dimming
-  // layer of any kind — it is simply the artwork at rest.
+  // the scratch threshold is crossed, it runs IN PARALLEL with the cover
+  // dissolving, never after it: the date settles in immediately, the warm
+  // bloom rises, the celebration fires, and the countdown is already
+  // emerging at half strength beneath it. The light then recedes — slowly,
+  // like sunlight passing across the painting — finishing just as the
+  // countdown completes at NORMAL, full brightness. The final settled
+  // scene carries no dimming layer of any kind: just the artwork at rest.
   const beginReveal = useCallback(() => {
-    if (phase !== "sealed") return;
+    if (phaseRef.current !== "sealed") return;
     bloomTimers.current.forEach((t) => clearTimeout(t));
     bloomTimers.current = [];
     if (reduceMotion) {
-      setPhase("settled");
+      goPhase("settled");
+      setCoverMounted(false);
       return;
     }
+    goPhase("revealed"); // the date begins settling NOW, under the dissolving cover
     setBloom(true);
     setSprinkle(true);
     bloomTimers.current.push(
-      window.setTimeout(() => setPhase("revealed"), 850), // cover dissolved → date settles in
-      window.setTimeout(() => setBloom(false), 1600), // light begins to recede (2.2s gentle exit)
-      window.setTimeout(() => setPhase("settled"), 2300), // countdown eases in at full brightness
-      window.setTimeout(() => setSprinkle(false), 2600), // particles done, unmount
+      window.setTimeout(() => setBloom(false), 1700), // light begins to recede (2.2s gentle exit)
+      window.setTimeout(() => goPhase("settled"), 2300), // countdown completes at full brightness
+      window.setTimeout(() => setSprinkle(false), 3000), // particles done, unmount
     );
-  }, [phase, reduceMotion]);
+  }, [goPhase, reduceMotion]);
 
-  const complete = useCallback(() => setPhase("revealed"), []);
+  /* the cover leaves the DOM only once it has fully dissolved */
+  const handleCoverGone = useCallback(() => setCoverMounted(false), []);
 
   const forceReveal = useCallback(() => {
     setStarted(true);
+    setDismissCover(true); // the assist dissolves the cover, it never cuts it
     beginReveal();
   }, [beginReveal]);
 
@@ -435,7 +575,17 @@ export default function DateReveal({
     [],
   );
 
+  /* the scroll invitation is anchored to the COUNTDOWN having settled —
+     not to the section mounting — and reuses the existing phase as its
+     clock instead of adding a second, independent one */
+  useEffect(() => {
+    if (phase !== "settled") return;
+    const t = window.setTimeout(() => setShowScrollCue(true), 3600);
+    return () => window.clearTimeout(t);
+  }, [phase]);
+
   const sealed = phase === "sealed";
+  const revealed = phase === "revealed";
   const settled = phase === "settled";
 
   return (
@@ -491,8 +641,10 @@ export default function DateReveal({
       />
 
       {/* a few elegant celebratory flecks the moment the cover gives way —
-          gold and blush, short-lived, well clear of the date. Not confetti. */}
-      <CelebrationParticles active={sprinkle && !reduceMotion} count={6} durationMs={1700} />
+          gold and blush, short-lived, well clear of the date. Not confetti.
+          These are synced to the ACTUAL reveal (the threshold crossing),
+          never to the section loading. */}
+      <CelebrationParticles active={sprinkle && !reduceMotion} count={6} durationMs={2100} />
 
       {/* ── the arch's clear channel — clear of the lanterns above and
           the domed pavilions below ── */}
@@ -530,9 +682,25 @@ export default function DateReveal({
             transition: reduceMotion ? "none" : "transform 1.3s cubic-bezier(0.16,1,0.3,1)",
           }}
         >
+          {/* THE CELEBRATION — a small burst of gold sparks out of the
+              date's own centre at the instant it is revealed. It sits
+              BEHIND the numerals (zIndex -1 inside this stage's own
+              stacking context, created by its transform), so the light
+              reads as coming from the date rather than being sprayed
+              over it. Vertical travel is compressed so the sparks stay in
+              the arch's channel and never reach the countdown. */}
+          <div style={{ position: "absolute", inset: 0, zIndex: -1 }}>
+            <CelebrationParticles
+              mode="burst"
+              active={sprinkle && !reduceMotion}
+              count={14}
+              durationMs={2200}
+            />
+          </div>
+
           <DateFace day={day} month={month} year={year} weekday={weekday} time={time} />
 
-          {sealed && canScratch && (
+          {coverMounted && canScratch && (
             <div
               className="absolute left-1/2 top-1/2"
               style={{
@@ -544,7 +712,9 @@ export default function DateReveal({
               <ScratchCover
                 onFirstScratch={() => setStarted(true)}
                 onRevealStart={beginReveal}
-                onComplete={complete}
+                onCoverGone={handleCoverGone}
+                dismiss={dismissCover}
+                reduceMotion={reduceMotion}
                 ariaLabel="Scratch the gold cover to reveal the wedding date"
               />
               <span
@@ -599,18 +769,55 @@ export default function DateReveal({
         </div>
 
         {/* countdown — no rule, no box; a quiet band of type held a
-            generous gap below the date, subordinate to it */}
+            generous gap below the date, subordinate to it.
+
+            Its SPACE is reserved from the start: the countdown component
+            is mounted from the moment the section is live and simply
+            held at zero opacity, so the date never shifts up when the
+            numbers arrive (that layout jump was the visible "cut").
+
+            And it emerges ACROSS the reveal rather than after it: already
+            half-lit while the cover dissolves, complete as the scene
+            settles. One interpolation of opacity + a whisper of scale and
+            travel — never a display swap, never a second entrance. */}
         <div
           className="flex flex-col items-center"
           style={{
             marginTop: "clamp(28px, 6.5dvh, 56px)",
-            opacity: settled ? 1 : 0,
-            transform: settled ? "translateY(0)" : "translateY(10px)",
-            transition: reduceMotion ? "none" : "opacity 1.1s ease 0.2s, transform 1.1s ease 0.2s",
+            opacity: settled ? 1 : revealed ? 0.45 : 0,
+            transform: settled
+              ? "translateY(0) scale(1)"
+              : revealed
+                ? "translateY(4px) scale(0.994)"
+                : "translateY(14px) scale(0.985)",
+            transition: reduceMotion
+              ? "none"
+              : "opacity 1.4s ease, transform 1.6s cubic-bezier(0.16,1,0.3,1)",
           }}
         >
-          <Countdown targetDate={weddingDate} visible={visible && settled} />
+          <Countdown targetDate={weddingDate} visible={visible} />
         </div>
+      </div>
+
+      {/* the scroll invitation — the same chevron + SCROLL NOW mark the
+          couple scene closes on, set into the empty band beneath the
+          countdown. It waits for the countdown to settle (the phase
+          above), and it is purely visual: the reel pager owns the
+          gesture, so it can never interfere with the scratch above it. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: "50%",
+          bottom: "max(clamp(16px, 3.4dvh, 32px), env(safe-area-inset-bottom, 0px))",
+          transform: "translateX(-50%)",
+          zIndex: 12,
+          pointerEvents: "none",
+          opacity: showScrollCue ? 1 : 0,
+          transition: reduceMotion ? "none" : "opacity 1.2s ease",
+        }}
+      >
+        <ScrollCue shown={showScrollCue} reduceMotion={reduceMotion} />
       </div>
     </section>
   );

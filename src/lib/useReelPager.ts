@@ -6,8 +6,8 @@ import { prefersReducedMotion } from "./motion";
  * invitation's cinematic reel.
  *
  * Every full-screen scene in the guest journey (Couple, Date, the
- * Celebrations chapter page, every ceremony, the Couple Photo album)
- * is marked with `data-reel-scene`. Scenes sit in normal document
+ * Celebrations chapter page, every ceremony, every one of the Couple
+ * Photo album's photographs) is marked with `data-reel-scene`. Scenes sit in normal document
  * flow, each one viewport tall, each carrying its OWN background so
  * background + foreground move together. This hook is the single piece
  * of input logic that turns that flow into a vertical reels-style
@@ -18,9 +18,14 @@ import { prefersReducedMotion } from "./motion";
  *     not double-fire or stack mid-move
  *   · small accidental touch movement stays below a threshold
  *   · a rest is ALWAYS a complete scene — never a stable half-and-half
+ *   · every programmatic move uses ONE glide curve (`GLIDE`): a soft,
+ *     deliberate start bleeding into a long landing, evaluated exactly,
+ *     so a scene change is smooth and cinematic rather than flicked
+ *   · a native rest (scrollbar, keyboard) is eased onto its scene with
+ *     that same glide — it is never snapped onto it
  *   · the first scene cannot scroll above the invitation; past the
- *     last scene (the album) normal page scrolling resumes, and
- *     scrolling back up re-enters the reel cleanly
+ *     last scene (the album's final photograph) normal page scrolling
+ *     resumes, and scrolling back up re-enters the reel cleanly
  *
  * The mechanism is deliberately low-level and single-owner:
  *
@@ -34,13 +39,14 @@ import { prefersReducedMotion } from "./motion";
  *   On release the gesture settles to the scene it earned: a decisive
  *   fling moves one scene, a sustained drag moves as many scene tops
  *   as it actually crossed, a short nudge settles back. Horizontal
- *   intent is never claimed — it belongs to the photo carousel (or
- *   any other horizontal surface).
+ *   intent is never claimed — if a scene ever grows a horizontal surface,
+ *   that surface owns it.
  *
  *   NATIVE RESTS — scrollbar / keyboard rests can stop anywhere; an
- *   idle watcher (140ms of stillness) aligns them instantly to the
- *   nearest whole scene while the viewport is over the reel, so even
- *   browser-native scrolling cannot rest between two scenes.
+ *   idle watcher (140ms of stillness) eases them onto the nearest whole
+ *   scene while the viewport is over the reel (same glide as a gesture,
+ *   never a snap), so even browser-native scrolling cannot rest between
+ *   two scenes.
  *
  * The reel never traps anyone: below the last scene (and above the
  * first) the browser owns scrolling entirely.
@@ -50,13 +56,61 @@ import { prefersReducedMotion } from "./motion";
  *  in document order. */
 const SCENE_SELECTOR = "[data-reel-scene]";
 
+/** How long after a landing a wheel gesture is still ignored — one
+ *  physical wheel burst (or a trackpad's momentum tail) pages exactly
+ *  one scene, never two. */
+const WHEEL_SETTLE_MS = 200;
+
+/** An exact cubic-bezier timing function, returned as `y(x)`. */
+function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
+  const cx = 3 * x1;
+  const bx = 3 * (x2 - x1) - cx;
+  const ax = 1 - cx - bx;
+  const cy = 3 * y1;
+  const by = 3 * (y2 - y1) - cy;
+  const ay = 1 - cy - by;
+  const sampleX = (t: number) => ((ax * t + bx) * t + cx) * t;
+  const sampleY = (t: number) => ((ay * t + by) * t + cy) * t;
+  const slopeX = (t: number) => (3 * ax * t + 2 * bx) * t + cx;
+
+  return (x: number): number => {
+    // Newton–Raphson first (converges in a few steps for these curves),
+    // then bisection as a guaranteed fallback
+    let t = x;
+    for (let i = 0; i < 8; i++) {
+      const err = sampleX(t) - x;
+      if (Math.abs(err) < 1e-6) return sampleY(t);
+      const d = slopeX(t);
+      if (Math.abs(d) < 1e-4) break;
+      t -= err / d;
+    }
+    let lo = 0;
+    let hi = 1;
+    t = x;
+    for (let i = 0; i < 24; i++) {
+      const err = sampleX(t) - x;
+      if (Math.abs(err) < 1e-6) break;
+      if (err > 0) hi = t;
+      else lo = t;
+      t = (lo + hi) / 2;
+    }
+    return sampleY(t);
+  };
+}
+
+/** The pager's glide. A pure ease-out (a cubic) begins at full velocity,
+ *  which reads as a flick; this is a close relative of the invitation's
+ *  own `cubic-bezier(0.22, 1, 0.36, 1)` with a gentler attack — a slow,
+ *  controlled start that bleeds into a long, calm landing. */
+const GLIDE = cubicBezier(0.34, 0, 0.18, 1);
+
 interface Geom {
   count: number;
   /** scene tops in document px */
   tops: number[];
   lastTop: number;
-  /** measured height of the final (album) scene — used for the reel
-   *  hand-off boundary */
+  /** measured height of the final scene (the album's last photograph) —
+   *  used for the reel hand-off boundary */
   lastHeight: number;
 }
 
@@ -140,6 +194,9 @@ export function useReelPager(armed: boolean): void {
   const lockedRef = useRef(false);
   const rafRef = useRef(0);
   const idleRef = useRef(0);
+  /** performance.now() until which wheel input stays swallowed (see
+   *  WHEEL_SETTLE_MS) */
+  const settleRef = useRef(0);
   const dragRef = useRef<DragSession | null>(null);
   const skipClaimRef = useRef(false);
 
@@ -184,19 +241,20 @@ export function useReelPager(armed: boolean): void {
       return;
     }
     lockedRef.current = true;
-    // premium glide + settle — fixed-ish duration so a burst of input
-    // can never catch up with itself
-    const dur = Math.min(980, Math.max(480, Math.abs(dist) * 0.42));
+    // premium glide + settle — ONE smooth move whose duration scales
+    // gently with distance and is capped, so a burst of input can never
+    // catch up with itself
+    const dur = Math.min(1040, Math.max(560, Math.abs(dist) * 0.52));
     const t0 = performance.now();
-    const ease = (p: number) => 1 - Math.pow(1 - p, 3);
     const step = (now: number) => {
       const p = Math.min(1, (now - t0) / dur);
-      el.scrollTop = startY + dist * ease(p);
+      el.scrollTop = startY + dist * GLIDE(p);
       if (p < 1) {
         rafRef.current = requestAnimationFrame(step);
       } else {
         rafRef.current = 0;
         lockedRef.current = false;
+        settleRef.current = performance.now() + WHEEL_SETTLE_MS;
         verifyLanding(y);
       }
     };
@@ -216,8 +274,11 @@ export function useReelPager(armed: boolean): void {
       if (y < 1 || y > g.lastTop + 1) return;
       const target = g.tops[nearestIndex(y, g.tops)];
       if (Math.abs(target - y) > 1) {
-        const el = document.scrollingElement;
-        if (el) el.scrollTop = target; // instant — native rests just align
+        // align with the SAME glide a gesture uses: a native rest (a
+        // scrollbar drag, a keyboard press, an Android fling that stops
+        // between scenes) eases onto its whole scene instead of snapping
+        // onto it, so nothing on the reel ever jumps
+        pageTo(target);
       }
     }, 140);
   };
@@ -227,9 +288,10 @@ export function useReelPager(armed: boolean): void {
     if (!armedRef.current) return;
     // browser zoom / assistive gestures pass through untouched
     if (e.ctrlKey || e.metaKey) return;
-    if (lockedRef.current) {
-      // a paging glide is in flight — swallow vertical deltas so one
-      // physical wheel burst cannot native-scroll past the locked scene
+    if (lockedRef.current || performance.now() < settleRef.current) {
+      // a paging glide is in flight (or has just landed) — swallow
+      // vertical deltas so one physical wheel burst, or a trackpad's
+      // momentum tail, cannot native-scroll past the scene we settled on
       if (Math.abs(e.deltaY) > Math.abs(e.deltaX) && e.cancelable) e.preventDefault();
       return;
     }
@@ -244,7 +306,7 @@ export function useReelPager(armed: boolean): void {
 
     if (dY > 0) {
       // next scene — only while a further reel scene exists below the
-      // current one; past the album the browser owns the scroll
+      // current one; past the last scene the browser owns the scroll
       if (y <= g.lastTop + g.lastHeight - 1) {
         const k = topSceneIndex(y, g.tops);
         if (k < g.count - 1) target = g.tops[k + 1];
@@ -354,10 +416,11 @@ export function useReelPager(armed: boolean): void {
     const y0 = s.startScrollY;
     let canClaim = false;
     if (forward) {
-      // claim anywhere over the reel INCLUDING the album screen (the
-      // last scene) — the release logic hands off past its midpoint, so
-      // an upward swipe on the album can never trap the guest. Only a
-      // gesture starting below the reel is a native leave.
+      // claim anywhere over the reel INCLUDING its final scene (the
+      // album's last photograph) — the release logic hands off past its
+      // midpoint, so an upward swipe on the last photograph can never
+      // trap the guest. Only a gesture starting below the reel is a
+      // native leave.
       canClaim = y0 < g.lastTop + g.lastHeight;
     } else {
       // going back up: only while the reel still dominates the viewport
@@ -380,9 +443,10 @@ export function useReelPager(armed: boolean): void {
 
   const driveDrag = (e: TouchEvent, t: Touch, s: DragSession) => {
     // the gesture turned clearly horizontal mid-drag — hand it back to
-    // whatever owns horizontal (the photo carousel) and restore the
-    // scene it started on, instantly, so a photo swipe never leaves the
-    // page stranded a few pixels off a scene top
+    // whatever owns horizontal (no reel scene does today; this is the
+    // safety valve if one ever does) and restore the scene it started on,
+    // instantly, so a horizontal drag never leaves the page stranded a
+    // few pixels off a scene top
     if (Math.abs(t.clientX - s.startX) > Math.abs(t.clientY - s.startY) * 1.2) {
       dragRef.current = null;
       const g = readGeom();
@@ -441,9 +505,9 @@ export function useReelPager(armed: boolean): void {
     const y = scrollPos();
     const max = scrollMax();
 
-    // a drag that travelled past most of the album scene has left the
-    // reel — finish the hand-off cleanly at the album's bottom (the top
-    // of the normal sections) instead of snapping back
+    // a drag that travelled past most of the final scene has left the
+    // reel — finish the hand-off cleanly at its bottom (the top of the
+    // normal sections) instead of snapping back
     if (y >= g.lastTop + g.lastHeight * 0.5) {
       pageTo(Math.min(max, g.lastTop + g.lastHeight));
       return;

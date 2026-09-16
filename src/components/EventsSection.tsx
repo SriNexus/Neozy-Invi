@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import type { EventData } from "../data/invitation";
+import type { EventWallpaper } from "../data/themes";
 import { parseEventDate } from "../data/invitation";
 import { useActiveTheme } from "../data/useTheme";
 import { prefersReducedMotion } from "../lib/motion";
@@ -37,9 +38,12 @@ import {
  *     the spoken detail
  *   · a refined, printed-ticket VIEW DIRECTIONS action
  *
- * The main wedding ceremony is the centrepiece: its page is set on the
- * invitation's own painted artwork (the frozen frame of the couple
- * film), so the strongest ceremony is also the most ceremonial page.
+ * Every ceremony page is set on ITS OWN artwork, taken from
+ * `ThemeAssets.eventBackgrounds` → that ceremony's own file in
+ * `public/themes/theme-1/images/`, applied ONCE and permanently as the
+ * scene's back layer (see EventBackdrop): no rotation, no timers, nothing
+ * that can reset underneath the guest. The main wedding ceremony is the
+ * centrepiece, with the strongest type treatment.
  *
  * The chapter opens with a single divider page ("The Celebrations")
  * so the Date scene hands off to a designed page before the
@@ -65,10 +69,12 @@ const ACCENTS: Record<string, string> = {
 };
 const accentFor = (motif: string) => ACCENTS[motif] ?? "rgba(200,170,110,0.14)";
 
-/* a barely-there legibility wash over the wedding page's artwork —
-   a warm veil hugging the composition, never a panel */
+/* the legibility wash that sits between a page's painted artwork and its
+   type — a warm veil hugging the composition, never a panel and never a
+   dark overlay. It is what lets the same printed ink colours (dark
+   Fraunces / Cormorant) stay readable on every ceremony's backdrop. */
 const ART_WASH =
-  "radial-gradient(ellipse 88% 62% at 50% 44%, rgba(252,247,237,0.5) 0%, rgba(252,247,237,0.22) 52%, transparent 78%)";
+  "radial-gradient(ellipse 88% 62% at 50% 44%, rgba(252,247,237,0.52) 0%, rgba(252,247,237,0.24) 52%, transparent 78%)";
 
 function useInView<T extends HTMLElement>(threshold = 0.3) {
   const ref = useRef<T | null>(null);
@@ -91,11 +97,76 @@ function useInView<T extends HTMLElement>(threshold = 0.3) {
   return { ref, inView };
 }
 
+/* ─────────────────────────────────────────────────────────────
+   EventBackdrop — THIS ceremony's artwork, as the page's full-screen
+   background layer.
+
+   Deliberately the simplest thing that can work: ONE painting, rendered
+   statically, always mounted, with no state, no timers, no crossfade
+   buffers and no mounting/unmounting on scroll. The artwork a ceremony is
+   given in `ThemeAssets.eventBackgrounds` is therefore the artwork its page
+   always shows — on every render, in every build, and for as long as the
+   guest is parked on the page. (An earlier per-ceremony carousel is what
+   made the background appear to change or reset underneath the guest.)
+
+   It sits at the back of its own 100dvh scene, so it moves with that page
+   exactly like the page's own type does — and it slides under the warm
+   `ART_WASH` veil plus the ceremony's watercolour breath, which is what
+   keeps the printed dark ink readable on the painting. Nothing here is
+   interactive (`pointer-events: none`, no handlers), so every vertical
+   swipe still belongs to useReelPager.
+   ───────────────────────────────────────────────────────────── */
+function EventBackdrop({ wallpaper }: { wallpaper: EventWallpaper }) {
+  return (
+    <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+      {/* the printed card's paper, underneath — a slow or failed image can
+          never leave a blank page */}
+      <div className="absolute inset-0" style={{ background: PAPER }} />
+      {/* eager on purpose: this image IS the page, so it must already be
+          decoded by the time the pager lands on the scene — never a paper
+          flash. Once loaded it is never unmounted, so it is always there. */}
+      <img
+        src={wallpaper.ground}
+        alt=""
+        decoding="async"
+        className="absolute inset-0 w-full h-full"
+        style={{
+          objectFit: "cover",
+          objectPosition: wallpaper.groundPosition ?? "center",
+        }}
+      />
+      {wallpaper.motif && (
+        <img
+          src={wallpaper.motif}
+          alt=""
+          aria-hidden="true"
+          decoding="async"
+          style={{
+            position: "absolute",
+            left: "50%",
+            top: wallpaper.motifTop ?? "24%",
+            width: wallpaper.motifWidth ?? "60%",
+            height: "auto",
+            transform: "translateX(-50%)",
+            opacity: wallpaper.motifOpacity ?? 0.34,
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
 /* the printed page's shared envelope: an inset double hairline frame
    with a floret at each corner — the stationery "card edge" that every
-   page of the chapter shares */
-function PageEnvelope({ hero }: { hero?: boolean }) {
-  const ink = hero ? "rgba(252,248,240,0.5)" : "var(--gold-invite)";
+   page of the chapter shares.
+
+   `onArt` switches the hairlines to a warm cream: every ceremony page
+   now sits on painted artwork, and a gold hairline would dissolve into
+   the painting's own cream arch. Gold stays the ink on plain paper
+   pages, and the corner florets stay gold either way (as they always
+   have on the wedding page). */
+function PageEnvelope({ onArt }: { onArt?: boolean }) {
+  const ink = onArt ? "rgba(252,248,240,0.5)" : "var(--gold-invite)";
   const inset = "clamp(10px, 2.4vw, 18px)";
   const corners = ["tl", "tr", "br", "bl"] as const;
   const cornerPos: Record<(typeof corners)[number], CSSProperties> = {
@@ -109,7 +180,7 @@ function PageEnvelope({ hero }: { hero?: boolean }) {
       {/* outer hairline */}
       <div
         className="absolute"
-        style={{ inset, border: "1px solid", borderColor: ink, opacity: hero ? 0.5 : 0.34 }}
+        style={{ inset, border: "1px solid", borderColor: ink, opacity: onArt ? 0.5 : 0.34 }}
       />
       {/* inner hairline, offset a breath */}
       <div
@@ -118,7 +189,7 @@ function PageEnvelope({ hero }: { hero?: boolean }) {
           inset: `calc(${inset} + 5px)`,
           border: "1px solid",
           borderColor: ink,
-          opacity: hero ? 0.3 : 0.16,
+          opacity: onArt ? 0.3 : 0.16,
         }}
       />
       {corners.map((c) => (
@@ -341,6 +412,10 @@ function EventScene({
   const motif = motifForEvent(event);
   const hasImage = !!event.image && imgOk;
   const chapter = ROMAN[index] ?? String(index + 1);
+  /* this ceremony's OWN artwork, from the theme's asset map — never a path
+     hardcoded here (see ThemeAssets.eventBackgrounds). One painting per
+     event, applied permanently by `EventBackdrop` below. */
+  const art = theme.assets.eventBackgrounds?.[motif];
 
   useEffect(() => {
     const el = sceneRef.current;
@@ -374,51 +449,53 @@ function EventScene({
       className="relative w-full overflow-hidden"
       style={{ height: "100dvh" }}
     >
-      {/* ── THIS PAGE'S OWN BACKGROUND — moves with the scene ──
-          The wedding ceremony is set on the invitation's painted
-          artwork; every other page is the printed card's paper with
-          one watercolour breath of the painting's palette. */}
-      {hero ? (
-        <>
-          <img
-            src={theme.assets.wallpaperPoster}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 w-full h-full"
-            style={{ objectFit: "cover", objectPosition: "center", zIndex: 0 }}
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none"
-            style={{ zIndex: 1, background: ART_WASH }}
-          />
-        </>
+      {/* ── THIS PAGE'S OWN BACKGROUND — its full-screen back layer ──
+          One permanently-applied painting per ceremony
+          (theme.assets.eventBackgrounds, keyed by the ceremony's motif),
+          rendered statically on top of the printed card's paper ground —
+          so it is always present, never cycles, and a slow or missing
+          image can never leave a blank page.
+
+          It is the page's BACK layer (z-index 0, behind the ceremony's
+          watercolour breath, the warm legibility veil, the printed
+          envelope and all of the type), it takes no gestures, and it
+          moves with its own scene as one unit — exactly like every other
+          full-screen page of the reel. */}
+      {art ? (
+        <EventBackdrop wallpaper={art} />
       ) : (
-        <>
-          <div aria-hidden="true" className="absolute inset-0" style={{ zIndex: 0, background: PAPER }} />
-          {/* the ceremony's watercolour breath */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              zIndex: 1,
-              background: `radial-gradient(ellipse 92% 58% at 50% 20%, ${accentFor(motif)} 0%, transparent 72%)`,
-            }}
-          />
-          {/* the arch ghost — the invitation's own silhouette rising
-              behind the composition */}
-          <div
-            aria-hidden="true"
-            className="absolute inset-x-0 bottom-0 pointer-events-none flex justify-center"
-            style={{ zIndex: 1, opacity: 0.05 }}
-          >
-            <JharokhaArch width={280} />
-          </div>
-        </>
+        <div aria-hidden="true" className="absolute inset-0" style={{ zIndex: 0, background: PAPER }} />
+      )}
+      {/* the ceremony's watercolour breath — the page's palette bleeding
+          into its artwork */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          zIndex: 1,
+          background: `radial-gradient(ellipse 92% 58% at 50% 20%, ${accentFor(motif)} 0%, transparent 72%)`,
+        }}
+      />
+      {art ? (
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{ zIndex: 1, background: ART_WASH }}
+        />
+      ) : (
+        /* no artwork for this ceremony — the invitation's own arch rises
+           behind the composition instead */
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 bottom-0 pointer-events-none flex justify-center"
+          style={{ zIndex: 1, opacity: 0.05 }}
+        >
+          <JharokhaArch width={280} />
+        </div>
       )}
 
       {/* the stationery envelope — frame + corner florets */}
-      <PageEnvelope hero={hero} />
+      <PageEnvelope onArt={!!art} />
 
       {/* ── the page's content ── */}
       <div

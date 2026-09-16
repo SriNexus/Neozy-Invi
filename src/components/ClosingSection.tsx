@@ -33,6 +33,7 @@ export default function ClosingSection({
 }) {
   const theme = useActiveTheme();
   const { ref, inView } = useInView<HTMLDivElement>();
+  const [artOk, setArtOk] = useState(true);
 
   const step = (i: number): React.CSSProperties => ({
     opacity: inView ? 1 : 0,
@@ -45,6 +46,35 @@ export default function ClosingSection({
       className="relative w-full overflow-hidden flex items-center justify-center"
       style={{ minHeight: "96dvh", padding: "clamp(72px,15vw,120px) clamp(24px,6vw,48px)" }}
     >
+      {/* The closing page's artwork — the invitation's COVER, closing the
+          book it opened. Full-bleed behind the farewell and moving with
+          the section, under a warm stationery veil rather than a dark
+          overlay: the painting stays a presence at the edges while the
+          printed ink stays exactly as readable as it is on paper. (The
+          Venue page uses the same artwork-plus-veil idea on a deep
+          palette; this page stays in the light, so the invitation ends
+          on its own paper world.) */}
+      {artOk && (
+        <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+          <img
+            src={theme.assets.closingImage}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            onError={() => setArtOk(false)}
+            className="w-full h-full"
+            style={{ objectFit: "cover", objectPosition: "center 38%" }}
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(ellipse 112% 78% at 50% 46%, rgba(253,250,243,0.94) 0%, rgba(250,245,233,0.88) 52%, rgba(236,226,203,0.93) 100%)",
+            }}
+          />
+        </div>
+      )}
+
       <div ref={ref} className="relative z-10 text-center flex flex-col items-center" style={{ maxWidth: 420 }}>
         <div style={{ ...step(0), color: "var(--gold-invite)" }}>
           <JharokhaArch width={96} style={{ opacity: 0.7 }} />

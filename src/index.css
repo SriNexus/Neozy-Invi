@@ -116,8 +116,9 @@ body {
    There is intentionally NO CSS scroll-snap here: proximity snapping
    could not guarantee that a rest is always exactly one scene, could
    not stop one wheel burst from skipping several scenes, and would
-   fight the pager's own aligned glides. Below the album (Venue → RSVP
-   → Closing) scrolling is ordinary page scrolling; nothing snaps. */
+   fight the pager's own aligned glides. Below the album's last
+   photograph (Venue → RSVP → Closing) scrolling is ordinary page
+   scrolling; nothing snaps. */
 
 body {
   font-family: var(--font-body);
@@ -130,9 +131,9 @@ body {
    claim lands, and once a native pan is in flight preventDefault can no
    longer stop it (Android honors touch-action strictly; iOS uses it
    advisory). `pan-x pinch-zoom` keeps horizontal panning and pinch-zoom
-   native, and leaves vertical panning to JavaScript. The photo album's
-   own stage narrows this to `none` (both axes are JS-owned there — the
-   carousel owns horizontal, the pager owns vertical). Paper sections
+   native, and leaves vertical panning to JavaScript — every scene,
+   including each of the album's full-screen photographs, keeps this
+   default: the reel has no horizontal surface left to own. Paper sections
    below the reel (Venue → RSVP → Closing) keep full native scrolling
    (default auto). */
 [data-reel-scene] {
@@ -279,17 +280,6 @@ body {
   33% { transform: scale(1.01) translate3d(-0.3%, -0.2%, 0); }
   66% { transform: scale(1.005) translate3d(0.2%, 0.1%, 0); }
   100% { transform: scale(1) translate3d(0, 0, 0); }
-}
-
-/* ─── Scroll Cue ─── */
-@keyframes scrollBounce {
-  0%, 100% { opacity: 0.28; transform: translateY(0); }
-  50% { opacity: 0.72; transform: translateY(4px); }
-}
-
-.scroll-cue-chevron {
-  display: block;
-  animation: scrollBounce 2.2s ease-in-out infinite;
 }
 
 /* ─── Intro → Card resolve ─── */
@@ -480,6 +470,99 @@ body {
   100% { opacity: 0; }
 }
 
+/* the date-reveal burst — a gold spark leaving the date's centre; it
+   travels out along --burst-dx/--burst-dy and fades as it goes. The
+   45deg rotation makes each mark a tiny diamond, the invitation's own
+   motif, rather than a generic confetti fleck. */
+@keyframes celebrationBurst {
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.35) rotate(45deg);
+    opacity: 0;
+  }
+  16% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate3d(var(--burst-dx, 0px), var(--burst-dy, -40px), 0) scale(1) rotate(45deg);
+    opacity: 0;
+  }
+}
+
+/* ─── Scratch cover idle: the spring rock ───
+   The painted scratch surface rocks in its own place — a fast, TINY
+   clockwise ↔ anticlockwise spring (peak ≈1.8°, decaying), then a beat
+   of stillness, then again. It reads as "scratch me" without ever
+   leaving its position: rotation only, about the layer's own centre
+   (no translation, no scale, no bouncing).
+
+   Why rotation-only, and why the percentage/timing shape: the parent
+   wrapper of the canvas carries it, and a rotation about the ELEMENT'S
+   OWN CENTRE keeps the centre fixed — the canvas' bounding-box centre is
+   therefore still the exact pivot, which is what lets DateReveal undo
+   the tilt when mapping pointer coordinates. The first segment uses a
+   gentle overshoot curve so the arrival feels sprung, not mechanical. */
+@keyframes scratchRock {
+  0% {
+    transform: rotate(0deg);
+    animation-timing-function: cubic-bezier(0.2, 1.35, 0.4, 1);
+  }
+  8% {
+    transform: rotate(1.8deg);
+  }
+  18% {
+    transform: rotate(-1.5deg);
+  }
+  28% {
+    transform: rotate(1.05deg);
+  }
+  37% {
+    transform: rotate(-0.62deg);
+  }
+  45% {
+    transform: rotate(0.3deg);
+  }
+  52% {
+    transform: rotate(-0.12deg);
+  }
+  60%,
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+/* ─── Scroll cue: the mark's breath ───
+   Arrow + SCROLL NOW brighten and drift a few pixels downward together,
+   never dropping below ~74% opacity. (The retired `scrollBounce` dropped
+   to 28%, which read as "nothing there" for a thin stroke over the
+   artwork's dark lower band.) */
+@keyframes scrollCuePulse {
+  0%,
+  100% {
+    opacity: 0.74;
+    transform: translateY(-1px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(5px);
+  }
+}
+
+/* ─── Scroll cue: the light behind it ───
+   The warm aura swells and recedes on the SAME clock as the mark, so the
+   whole cue reads as one breathing ray of light. Animation only — with
+   reduced motion the light is simply present and still. */
+@keyframes scrollCueAura {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: translate(-50%, -50%) scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
 /* ─── Prefers Reduced Motion ─── */
 @media (prefers-reduced-motion: reduce) {
   .reveal-char,
@@ -498,7 +581,6 @@ body {
   .animate-breathe,
   .animate-drift-slow,
   .animate-fade-up,
-  .scroll-cue-chevron,
   .animate-reveal-pop,
   .animate-reveal-glow,
   .animate-fade-slide-up {

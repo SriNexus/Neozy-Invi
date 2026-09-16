@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, RefObject } from "react";
 import type { CoupleData } from "../data/invitation";
 import VideoBackground from "./VideoBackground";
+import ScrollCue from "./ScrollCue";
 
 /**
  * Couple introduction — the opening scene of the wedding film.
@@ -258,19 +259,25 @@ export default function CoupleIntro({
           // height-matched under object-fit: cover on every portrait
           // phone, so every painted feature lives at a fixed FRACTION of
           // the scene height — the lanterns bottom out at ≈13.4% of the
-          // scene. Ganesha's top is therefore a pure fraction of the
-          // scene (15dvh = 15% of height), which keeps it ~1.6% of the
-          // scene clear of the lanterns on EVERY phone — the old 118px
-          // floor was viewport-absolute and is what let the figure drift
-          // relative to the painting on short phones. (Raising it past
-          // ~14.5dvh would collide with the measured lantern row, so the
-          // "higher" feel comes from the stable breathing band below,
-          // not from pushing it into the lanterns.)
-          top: "15dvh",
+          // scene, which is the figure's UPPER bound (above that it would
+          // sit among the painted lanterns). Ganesha's top is therefore a
+          // pure fraction of the scene (17.8dvh = 17.8% of height), which
+          // keeps it clear of the lantern row on EVERY phone — the old
+          // 118px floor was viewport-absolute and is what let the figure
+          // drift relative to the painting on short phones. 17.8dvh is
+          // ~10% lower than the previous 16.2dvh rest: the figure sits
+          // deeper into the arch's clear channel, and the name lockup
+          // below lifts by the same 10%, so the two re-balance around the
+          // painting's own centre instead of both sitting high. Clear air
+          // between the figure's feet and the bride's name is preserved
+          // (≥ ~88px on a 360×640).
+          top: "17.8dvh",
           // dvh-assisted width so the figure tracks the artwork's own
-          // scale (painted features grow with vh), staying inside the
-          // previously approved ~92–134px envelope.
-          width: "clamp(92px, 13.4dvh, 134px)",
+          // scale (painted features grow with vh). ~10% smaller than the
+          // previous clamp(92px, 13.4dvh, 134px) — same devotional
+          // presence, a shade more restrained, still proportional on
+          // every phone, never a fixed-pixel size.
+          width: "clamp(83px, 12.1dvh, 121px)",
           transform: `translateX(-50%) ${
             gan ? "translateY(0)" : "translateY(-150dvh)"
           }`,
@@ -311,7 +318,12 @@ export default function CoupleIntro({
           // bottom-anchored so the block clears the domed pavilions and
           // grows upward toward Ganesha as it assembles — the names keep
           // their exact relationship to each other and to the hands.
-          bottom: "clamp(66px, 13.5dvh, 124px)",
+          // ~10% higher than the previous clamp(73px, 14.9dvh, 136px):
+          // the WHOLE lockup (names + parent lines + wedding hands) is
+          // lifted as one unit, never element by element, so the
+          // composition keeps its balance and the names simply sit a
+          // touch deeper into the arch.
+          bottom: "clamp(80px, 16.4dvh, 150px)",
           paddingLeft: "clamp(24px, 7vw, 48px)",
           paddingRight: "clamp(24px, 7vw, 48px)",
           zIndex: 10,
@@ -386,8 +398,12 @@ export default function CoupleIntro({
         }}
       />
 
-      {/* one small golden chevron in the painted gap between the two
-          pavilions — a whisper of a scroll cue, not a button. */}
+      {/* the scene's scroll invitation, in the painted gap between the
+          two pavilions: a small golden chevron with a tracked SCROLL NOW
+          wordmark beneath it. It arrives only after the couple film has
+          settled and frozen (the existing `arrow` cue — no second timer),
+          then breathes there quietly. Still a whisper, not a website
+          CTA: the chevron stays the only interactive surface. */}
       <button
         type="button"
         onClick={onAdvance}
@@ -395,29 +411,23 @@ export default function CoupleIntro({
         tabIndex={reached("arrow") ? 0 : -1}
         className="absolute left-1/2"
         style={{
-          bottom: "max(clamp(34px, 7dvh, 56px), env(safe-area-inset-bottom))",
+          // the cue is a tall mark now (arrow + wordmark + its pool of
+          // light), so the offset drops with it: the whole thing stays
+          // clear of the names above (~24px on a 360×640, more on taller
+          // phones) and off the very bottom edge of the art.
+          bottom: "max(clamp(14px, 3.2dvh, 32px), env(safe-area-inset-bottom, 0px))",
           transform: "translateX(-50%)",
           zIndex: 30,
           background: "transparent",
           border: "none",
-          padding: 12,
+          padding: 8,
           cursor: "pointer",
           opacity: reached("arrow") ? 1 : 0,
           pointerEvents: reached("arrow") ? "auto" : "none",
           transition: "opacity 1s ease",
         }}
       >
-        <span
-          style={{
-            display: "block",
-            filter: "drop-shadow(0 1px 4px rgba(184,148,63,0.3))",
-            animation: reduceMotion ? "none" : "scrollBounce 3s ease-in-out infinite",
-          }}
-        >
-          <svg width="22" height="13" viewBox="0 0 22 13" fill="none" aria-hidden="true">
-            <path d="M2 2l9 8 9-8" stroke="var(--gold-invite)" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
+        <ScrollCue shown={reached("arrow")} reduceMotion={reduceMotion} />
       </button>
     </section>
   );

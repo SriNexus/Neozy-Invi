@@ -39,6 +39,30 @@ export interface ThemeFonts {
   sc: string;
 }
 
+/**
+ * One event page's artwork.
+ *
+ * `ground` is the full-bleed painting that page is set on. `motif` is an
+ * optional TRANSPARENT artwork laid over it — the invitation's own
+ * Ganesha, joined hands or gold sheet — which turns a page into a
+ * devotional / union / gold-leaf variation of the same painting. All the
+ * framing lives here, so a ceremony's artwork is pure data and a
+ * component never knows a path.
+ */
+export interface EventWallpaper {
+  ground: string;
+  /** which part of the ground the page frames (`object-position`) */
+  groundPosition?: string;
+  /** a transparent artwork laid over the ground */
+  motif?: string;
+  /** the motif's width, as a share of the page width */
+  motifWidth?: string;
+  /** the motif's offset from the top of the page */
+  motifTop?: string;
+  /** how strongly the motif reads — it is a watermark, never the subject */
+  motifOpacity?: number;
+}
+
 export interface ThemeAssets {
   /**
    * The single persistent cinematic wallpaper that lives behind the
@@ -47,6 +71,32 @@ export interface ThemeAssets {
    */
   wallpaperVideo: string;
   wallpaperPoster: string;
+  /**
+   * The Celebrations chapter's artwork, keyed by the ceremony's MOTIF
+   * (`motifForEvent()` in decor/Ornaments): mehendi / haldi / sangeet /
+   * wedding / reception → ONE permanently-applied painting per ceremony
+   * (see `EVENT_BACKGROUNDS`). It is rendered once, statically, as that
+   * page's full-screen background — nothing rotates, crossfades or
+   * re-mounts it. A ceremony with no entry keeps the printed paper page.
+   */
+  eventBackgrounds: Record<string, EventWallpaper>;
+  /**
+   * The Venue section's artwork. Used only when the invitation carries no
+   * `venue.image` of its own — an uploaded/venue-specific photograph always
+   * wins. Theme-owned so the section never hardcodes a path.
+   */
+  venueImage: string;
+  /** The closing page's artwork — the invitation's own cover art, closing
+   *  the book it opened. */
+  closingImage: string;
+  /**
+   * The album's PLACEHOLDER pages, shown in this order while the gallery is
+   * empty (uploaded photographs replace them automatically), so the album is
+   * always a real multi-photograph sequence instead of one framed artwork.
+   * ONE entry = ONE full-screen scene. Theme-owned, so no component
+   * hardcodes an image path.
+   */
+  albumArt: string[];
 }
 
 export interface ThemeMotifs {
@@ -90,6 +140,34 @@ export interface ThemeConfig {
   motion: "subtle" | "standard" | "expressive";
 }
 
+/** where every theme-1 image lives — kept in one place so a ceremony's
+ *  own artwork is a filename away */
+const IMG = "/themes/theme-1/images/";
+
+/* ─────────────────────────────────────────────────────────────
+   Each ceremony's OWN artwork — ONE painting per event, permanently.
+
+   These are ordinary files in `public/themes/theme-1/images/`: replace
+   `haldi.jpg` (or any of the others) and that ceremony's page shows the new
+   painting, with no code change.
+
+   DELIBERATELY STATIC. Nothing here rotates, crossfades, re-mounts on
+   scroll or cycles on a timer: the artwork a ceremony is given is the
+   artwork its page always shows (rendered by `EventBackdrop` in
+   EventsSection.tsx). That is what keeps an event background fixed and
+   persistent across renders — an earlier per-ceremony image CAROUSEL is
+   what made the background appear to change or reset on its own.
+
+   A ceremony with no entry here keeps the printed paper page.
+   ───────────────────────────────────────────────────────────── */
+const EVENT_BACKGROUNDS: Record<string, EventWallpaper> = {
+  mehendi: { ground: `${IMG}mehendi.jpg` },
+  sangeet: { ground: `${IMG}sangeet.jpg` },
+  haldi: { ground: `${IMG}haldi.jpg` },
+  wedding: { ground: `${IMG}wedding.jpg` },
+  reception: { ground: `${IMG}reception.jpg` },
+};
+
 /** Shared defaults so a theme only overrides what makes it distinct. */
 const BASE: Pick<ThemeConfig, "fonts" | "assets" | "motifs" | "layout" | "paperWorld"> = {
   fonts: {
@@ -107,6 +185,25 @@ const BASE: Pick<ThemeConfig, "fonts" | "assets" | "motifs" | "layout" | "paperW
     // so the fallback / pre-buffer frame is the same painted jharokha the
     // film resolves to, never the gate envelope.
     wallpaperPoster: "/themes/theme-1/images/couple-poster.jpg",
+    // The Celebrations chapter: ONE painting per ceremony, keyed by motif
+    // (see EVENT_BACKGROUNDS). Replacing a file in
+    // public/themes/theme-1/images/ updates that ceremony's page.
+    eventBackgrounds: { ...EVENT_BACKGROUNDS },
+    // The Venue section's own artwork (used only when the invitation has no
+    // venue photograph of its own) — the painted jharokha, palatial and
+    // portrait-shaped, which is what a tall full-width section needs.
+    venueImage: `${IMG}couple-poster.jpg`,
+    // The closing page's artwork — the invitation's cover art, closing the
+    // book it opened.
+    closingImage: `${IMG}cover.jpg`,
+    // The album's placeholder plates, until real photographs are uploaded.
+    albumArt: [
+      `${IMG}couple-poster.jpg`,
+      `${IMG}cover.jpg`,
+      `${IMG}ganesha.png`,
+      `${IMG}wedding-hands.png`,
+      `${IMG}haldi.jpg`,
+    ],
   },
   motifs: { corner: "floret", divider: "lotus", eventEmblems: "ceremony" },
   layout: {
