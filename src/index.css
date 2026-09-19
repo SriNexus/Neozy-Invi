@@ -45,6 +45,12 @@
   --gold-invite: #b8943f;
   --gold-invite-light: #d4b86a;
   --gold-invite-dim: #a08540;
+  /* the richest tier of the gold family — deliberately deeper than
+     --gold-invite-dim, for the ONE piece of type on the whole invitation
+     that needs to out-rank every other gold on the page: the couple
+     names on the CoupleIntro card. Antique/bronze-gold, not yellow, not
+     orange — warm and muted, chosen for contrast against ivory paper. */
+  --gold-invite-deep: #8c6f32;
   --accent-glow: rgba(200, 170, 100, 0.15);
 
   /* Typography (theme-overridable) */

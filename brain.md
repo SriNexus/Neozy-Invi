@@ -109,7 +109,7 @@ Three-voice system (overridden by themes via useThemeApplication → CSS vars):
   day numerals. Set with `fontVariationSettings: '"opsz" 96–144, "SOFT" 40–50,
   "WONK" 0–1'`.
 - `--font-couple-custom` = **Telma Bold** — the couple names ONLY
-  (CoupleIntro LetterName; clamp(38px,12.5vw,54px), weight 700). Kept as a
+  (CoupleIntro LetterName; clamp(44px,6.4dvh,68px), weight 700). Kept as a
   separate variable so the experiment never leaks into Date/Events numerals.
 - `--font-engrave` = **Cormorant** — SYMBOLIC: month wordmark, done-state.
 - `--font-invite-label` = **Cormorant SC** — labels/kickers/parent lines,
@@ -119,9 +119,15 @@ Three-voice system (overridden by themes via useThemeApplication → CSS vars):
 
 Palette tokens (classic-gold default): `--text-primary #2c2520`,
 `--text-secondary #6b5e50`, `--text-tertiary #9a8c7a`, `--gold-invite #b8943f`,
-`--gold-invite-dim`, `--gold-invite-light`, `--paper-world` (cream radial).
-Text on art gets a tiny dark offset `textShadow: 0 1px 2px rgba(38,26,14,…)`
-for legibility — never glow/outline/gradient text.
+`--gold-invite-dim #a08540`, `--gold-invite-light #d4b86a`,
+`--gold-invite-deep #8c6f32` (added for the CoupleIntro card names — the
+richest/deepest tier, for contrast against the card's own ivory base; see
+Component map), `--paper-world` (cream radial).
+Text directly on the video/artwork gets a tiny dark offset
+`textShadow: 0 1px 2px rgba(38,26,14,…)` for legibility — never
+glow/outline/gradient text. Text on a warm-ivory CARD (CoupleIntro) instead
+gets a whisper of a light printed-ink highlight, not a contrast shadow —
+the card is behind it, not the video.
 
 ## Data & state
 
@@ -166,27 +172,124 @@ for legibility — never glow/outline/gradient text.
 ## Component map
 
 - `CoupleIntro.tsx` — the couple scene. Deterministic rAF clock from a fixed
-  t0 (`CUE` timings; StrictMode-immune via `t0Ref`). Ganesha enters from
-  `translateY(-150dvh)` over 5s `EASE_DESCENT` (cubic-bezier(0.12,0.72,0.2,1)),
-  rests at `top: 17.8dvh` (pure fraction; the painted lanterns bottom out at
-  ≈13.4% of scene height, which is the figure's UPPER bound), `width:
-  clamp(83px,12.1dvh,121px)` (≈10% smaller than the original 92/13.4dvh/134
-  clamp; the top has since been lowered twice — 15dvh → 16.2dvh → 17.8dvh,
-  each ≈10% of the previous rest). Clear air to the bride's name is ≥ ~88px
-  on a 360×640 and grows on taller phones.
-  Names = Telma Bold via
-  `--font-couple-custom` `clamp(40px,5.8dvh,60px)` with a normalized ~2.5s
-  per-letter type-on reveal (LetterName: TOTAL 2500ms / PER_LETTER 560ms,
-  stagger = (TOTAL−PER_LETTER)/(len−1)); parent lines = Cormorant SC with
-  flanking hairline+diamond; wedding-hands `clamp(150px,21.6dvh,210px)`.
-  The names + parents + hands are ONE block, bottom-anchored at
-  `clamp(80px,16.4dvh,150px)` (≈10% higher than the previous
-  `clamp(73px,14.9dvh,136px)`, itself ≈10% above 66/13.5dvh/124) — move it as
-  a unit, never element by element. The `arrow` cue (22.2s)
-  renders the shared `ScrollCue` (chevron + tracked SCROLL NOW).
-  Video paused at 20.6s (watchdog), never reset, never replayed. THE WHOLE
-  FOREGROUND IS ONE PROPORTIONAL dvh SYSTEM — scene is 100dvh and the art is
-  height-matched, so dvh fractions track painted-feature rows on every phone.
+  t0 (`CUE` timings; StrictMode-immune via `t0Ref`). **No Ganesha in this
+  scene** (removed deliberately; `ganesha.png` is still used elsewhere, see
+  Assets). **The foreground is a COUPLE PLAQUE** — a deliberate, explicit
+  exception to the "no cards" convention below, asked for by name for this
+  one scene: a warm ivory/champagne piece of stationery (`.paper-grain`
+  texture + a soft shadow + a 1px outer gold border + a 9px-inset gold
+  hairline, lifted from the same recipe as `RsvpSection.tsx`'s `Frame`)
+  holding the whole introduction, floating over the still-fully-visible
+  video.
+  **Shape (5th pass — a TRUE semicircular gumbad, not an ellipse-arc):**
+  the 4th pass's top used a small fixed `--arch-cap` (`36–50px`) as both
+  horizontal(50%)/vertical radius, which is a flattened ellipse-arc, not a
+  proper dome. Now `--dome-radius: calc(var(--plaque-w) / 2)` — EXACTLY
+  half the plaque's own width — is used as a SINGLE value (so horizontal
+  AND vertical radius are equal) on both top corners:
+  `borderTopLeftRadius`/`borderTopRightRadius: "var(--dome-radius)"`. Two
+  top corners each with horizontal radius = half-width meet exactly in the
+  middle (one unbroken arc); vertical radius = half-width too means the
+  dome's height equals its radius — the geometric definition of "upper
+  half of a circle". Bottom corners keep their own small, independent,
+  near-flat `--base-corner` (`clamp(8px,1.3dvh,12px)`, unchanged) plus the
+  small PEDESTAL BAR (`56%` width, vertical highlight→bronze gradient, its
+  own soft warm `boxShadow` — the ONLY deliberately-placed grounding
+  shadow in the composition) at `bottom: -4px`, unchanged from the 4th
+  pass. `--dome-radius` doubles as the plaque's own top padding.
+  **ONE continuous dimensional border wraps the WHOLE perimeter**
+  (previously only the pedestal read as "3-D"): two thin INSET
+  box-shadows — `inset 0 1px 0 rgba(255,252,244,0.55)` (light highlight,
+  upper inside edge) and `inset 0 -1px 0 rgba(120,92,45,0.22)` (warm
+  shadow, lower inside edge) — layered onto the existing outer ambient
+  `boxShadow`, under the 1px solid gold border (`rgba(184,148,63,0.3)`,
+  eased down slightly from `0.34` for restraint). Box-shadow always
+  respects border-radius, so this bevel travels around the dome's curve
+  exactly as it does the straight sides and flat base.
+  **7th pass removed the inner hairline entirely** (the second, concentric
+  gold line 9px inset) — named explicitly as part of a "box within box" /
+  competing-framing complaint. The outer border + the inset bevel above
+  already carry the "dimensional frame" job; a second line was pure
+  repetition. (This also removes a formula — `calc(var(--dome-radius) -
+  9px)` — that had been silently referencing the RETIRED `--arch-cap`
+  variable one pass prior; had that shipped, the undefined custom property
+  would have produced an invalid radius. Moot now that the element is gone.)
+  **Width:** `clamp(212px, 63vw, 266px)` (`--plaque-w`) — `63vw` keeps a
+  constant proportional side margin (~18.5vw per flank). Horizontal padding
+  `clamp(14px,4.5vw,22px)`.
+  **Position: `top: 50dvh`** (44 → 47 → 51 → 45 → 49.5 → 45 → **50dvh**
+  across eight passes). The 6th pass moved it to `49.5dvh` on a literal
+  "10% lower, verbatim" request and was flagged as a real overshoot past
+  the pavilion band on 360×640; the 7th pass reverted to `45dvh` because
+  that pass also added height (bigger hands, more parent-line spacing)
+  the `49.5dvh` budget had no room for. The 8th pass asked again, a
+  second time, for "10–15% lower, do not resize or touch internal
+  spacing" — explicitly ruling out the compensating trims used in earlier
+  passes — so `top` moved to `50dvh` (+11.1% from 45) with NOTHING else
+  in the file touched. **This is now flagged as a likely real overshoot
+  a second time, not silently absorbed**: with hands/spacing at their
+  current (larger, post-7th-pass) size, `50dvh` probably reproduces or
+  slightly worsens the same 360×640 bottom-pavilion collision `49.5dvh`
+  was reverted for. There is no remaining lever inside this file to fix
+  it without violating "do not resize the plaque" — if this is reported
+  as a real visual problem, the fix has to be a smaller downward shift, a
+  smaller plaque, or moving `ScrollCue` itself.
+  **Known thin spot, not visually verified:** at 360px width the parent
+  lines (now `clamp(13px,3.5vw,16px)`, tracking `0.13em` — see below) may
+  still not reliably fit on one line by hand-estimate and could wrap to 2
+  (`ParentLine` has never set `white-space: nowrap`, so this is a graceful
+  wrap, not clipping/an overflow bug) — if BOTH wrap simultaneously on the
+  shortest supported phone (360×640), clearance above the lantern/pavilion
+  bands drops to only a few px each side. Check this specific combination
+  by hand before shipping.
+  Names = Telma Bold via `--font-couple-custom`, `clamp(44px,6.4dvh,68px)`,
+  colour `--gold-invite-deep` (a new, deeper token added specifically for
+  this — see Typography system) — the card's richest gold tier, chosen for
+  contrast against the card's OWN ivory base (not the video, now that a
+  card sits between them). Per-letter type-on reveal unchanged (LetterName:
+  TOTAL 2500ms / PER_LETTER 560ms, stagger = (TOTAL−PER_LETTER)/(len−1)).
+  Parent lines = Cormorant SC, **refined this pass for presence**:
+  `clamp(12.5px,3.4vw,15.5px)` → `clamp(13px,3.5vw,16px)`, tracking `0.2em`
+  → `0.13em` (at a genuinely readable size, `0.2em` read as spaced-out
+  metadata rather than engraved stationery), line-height `1.4` → `1.55`,
+  `marginTop` `clamp(8px,1.8vh,15px)` → `clamp(10px,2vh,17px)` for more
+  separation from the name above. Still DELIBERATELY WITHOUT a flanking
+  hairline+diamond (see the comment above `ParentLine`) and still
+  explicitly NOT to be shrunk to buy vertical budget — it was flagged once
+  already as too small at the original `8.5–11px`.
+  Wedding-hands (`wedding-hands.png`, the original transparent handshake
+  artwork — the SAME FILE across every pass, never swapped, never
+  recoloured beyond a grounding drop-shadow) is now `clamp(62px,8dvh,78px)`
+  with `clamp(9px,1.8dvh,16px)` margin — nudged back UP this pass from
+  `56–74px` (it had been trimmed twice, purely to buy vertical budget for
+  the dome, past the point of reading as a meaningful symbolic element
+  rather than a small icon) so it reads as the connector between the two
+  names, not a second focal point; still grows from a single point to rest
+  via `EASE_ARRIVE`.
+  The `arrow` cue (22.2s, unchanged — still synced to the video's own
+  ≈20.6s settle) renders the shared `ScrollCue` (chevron + tracked wordmark,
+  currently "Begin Our Story"), positioned independently near the bottom of
+  the screen. Video paused at 20.6s
+  (watchdog), never reset, never replayed. Outside the card, the scene is
+  otherwise unadorned: just the original whisper top/bottom vignette and
+  the "settled" quiet radial vignette — no added colour grade or grain
+  layer over the video itself.
+  **`SoundToggle.tsx` and `FloatingContact.tsx`** (fixed-position global
+  chrome, gated by `showChrome = inCard && introDone` in
+  `PublicInvitation.tsx` — they mount at the EXACT moment `ScrollCue`
+  appears, i.e. `introDone` is set by `CoupleIntro`'s own `onComplete`)
+  were de-glassmorphed this pass: both used a `backdrop-blur-md` circular
+  glass-pill button, and `FloatingContact`'s expanded WhatsApp/Call actions
+  used coloured chip backgrounds (WhatsApp green, gold) with their own
+  `backdrop-blur` — all explicitly against this project's "no
+  cards/pills/glassmorphism" convention, and prominent enough to compete
+  with "Begin Our Story" at the one moment they share the screen. Now bare
+  icons/text (ivory, `filter: drop-shadow` for legibility over any
+  artwork — the same technique `ScrollCue` already used), no background,
+  no border, no blur. Functionality/positioning/wiring untouched.
+  THE WHOLE FOREGROUND IS ONE PROPORTIONAL dvh SYSTEM — scene is 100dvh and
+  the art is height-matched, so dvh fractions track painted-feature rows on
+  every phone.
 - `DateReveal.tsx` — scratch cover (canvas, painted gold PNG
   public/themes/theme-1/images/scratch.png, `destination-out` erasing, ~50% of originally
   opaque alpha must be erased; phases sealed → revealed → settled). The
@@ -223,16 +326,46 @@ for legibility — never glow/outline/gradient text.
   slow or failed image can never blank the page), then the painting
   (`object-fit: cover`, EAGER on purpose — the background must already be
   decoded when the pager lands on the scene; `loading="lazy"` is what let it
-  flash empty), then the ceremony's watercolour breath and the warm
-  `ART_WASH` veil for legibility — never a dark overlay, and the artwork is
-  never mixed into the type. It is STATICALLY rendered: no timers, no
-  crossfade buffers, no state, no mount/unmount on scroll, so the background
-  cannot change, disappear or reset underneath the guest. The arch ghost
-  remains only for a ceremony with no artwork. It takes no gestures
+  flash empty). It is STATICALLY rendered: no timers, no crossfade buffers,
+  no state, no mount/unmount on scroll, so the background cannot change,
+  disappear or reset underneath the guest. It takes no gestures
   (`pointer-events: none`, no handlers) — vertical swipes stay with
   useReelPager.
-  Roman chapter marks, `Medallion` emblem ring, Fraunces titles, date anchor,
-  venue small-caps, description, `.directions-action` button (index.css).
+  **Redesigned around the Theme 1 event photographs** (all five —
+  mehendi/haldi/sangeet/wedding/reception — shipped as real 768×1376
+  artwork; measured directly with pixel sampling, not eyeballed): each
+  photo is a flat-lay of an ornamental gold-framed PLAQUE with the
+  ceremony's own name already engraved into a ribbon banner near the top,
+  and a large blank cream panel below it. That panel sits at a consistent
+  ≈37–72% of image height / ≈16–83% of width across all five images. Since
+  `cover` height-matches the art (same principle as the Couple scene's
+  video), a vertical image-% maps directly to the same dvh-%, so the date/
+  venue content wrapper is positioned at a conservative `top: 39.5dvh` /
+  `bottom: 32dvh` — the INTERSECTION of all five images' own measured
+  ranges. `maxWidth: min(70vw, 280px)` keeps text safely inside the
+  measured horizontal panel too.
+  Because the artwork now supplies the ceremony's name/title and its own
+  frame, the app no longer draws one: **REMOVED** — the Roman chapter
+  mark, the `Medallion` emblem ring (component deleted), the
+  code-generated event-name `<h2>` + circle, the per-page double-hairline
+  `PageEnvelope` (a photographed gold frame doesn't need a second drawn
+  frame on top of it — `PageEnvelope` now only renders on `TitleScene` and
+  the no-artwork fallback), the `event.description` paragraph, the
+  per-event admin-uploaded `event.image` badge, `ART_WASH` and the
+  watercolour-breath tint (both were legibility/mood aids for busy or
+  variable art; the new photographs are already colour-graded and the
+  text sits on a guaranteed cream panel, so both are now redundant —
+  `accentFor`/`ACCENTS` still exist but only render in the plain-paper
+  fallback). **KEPT and now the ENTIRE overlay:** date (weekday, Fraunces
+  day numeral, month, time) and venue (name, address, `DirectionsAction`
+  — grouped with venue as "location details"). Same three-voice type
+  system, same `step()` fade+translateY reveal, same colours
+  (`--text-primary` for the day numeral, `--gold-invite`/`-dim` for
+  labels) — none of that changed, only what surrounds it and where it
+  sits. A ceremony with no matching theme artwork (no shipped event hits
+  this; the data model allows a hypothetical custom one) falls back to
+  the earlier plain-paper + arch-ghost + `PageEnvelope` + its own title
+  text, since there is no photograph to supply a name there.
 - `CouplePhotoExperience.tsx` — the album as a VERTICAL REEL: `AlbumLeaf`
   renders ONE photograph per full-screen `data-reel-scene` 100dvh section, so
   the existing pager consumes the photographs one deliberate gesture at a
@@ -318,6 +451,12 @@ for legibility — never glow/outline/gradient text.
   type. NO cards/pills/glassmorphism/gradients-as-decoration/SaaS chrome.
   No new fonts without checking the established set. No new assets unless
   genuinely needed and style-matched.
+  **Named exception: the CoupleIntro couple card** — explicitly requested
+  by name, modelled on the SAME card recipe already used elsewhere
+  (`.paper-grain`, the `Frame` pattern in `RsvpSection.tsx`: warm ivory
+  gradient, soft two-layer shadow, hairline border, `ThemeCorner` florets,
+  `borderRadius: 2`). Not a precedent for adding cards elsewhere — the rest
+  of the cinematic reel stays card-free.
 
 ## Assets (public/)
 
@@ -335,10 +474,17 @@ All Theme 1 media lives under `public/themes/theme-1/` (images/, videos/,
   `themes/theme-1/images/{mehendi,sangeet,haldi,wedding,reception}.jpg`: ONE
   file per ceremony, referenced from `ThemeAssets.eventBackgrounds`
   (`EVENT_BACKGROUNDS` in themes.ts) and rendered as that page's PERMANENT
-  back layer. **This is where per-ceremony artwork is edited.** As shipped,
-  four are byte-identical copies of `couple-poster.jpg` and `haldi.jpg` has
-  been replaced by hand (941×1672) — so four ceremonies currently look the
-  same until real artwork is dropped in.
+  back layer. **This is where per-ceremony artwork is edited.** All five are
+  now real, distinct photographs (768×1376 each) — no longer placeholder
+  copies of `couple-poster.jpg`. Each is a flat-lay of an ornamental
+  gold-framed plaque with the ceremony's name engraved into a ribbon banner
+  and a large blank cream text-safe panel beneath it (measured: ≈37–72% of
+  height, ≈16–83% of width — see `EventsSection.tsx`'s header comment and
+  `EventScene`, which position the date/venue overlay directly against
+  these numbers). Replacing one of these files changes that ceremony's
+  page with no code change, PROVIDED the new artwork keeps a similar
+  plaque-with-blank-panel composition in a similar place — the date/venue
+  position is measured from the current photos, not computed generically.
 - Other theme artwork: `couple-poster.jpg` (720×1280 painted jharokha) serves
   the Couple film poster, the Date Reveal background AND the Venue page
   (`venueImage`); `cover.jpg` (1594×987 envelope art) serves the Cover gate,

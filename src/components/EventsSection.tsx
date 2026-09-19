@@ -1,49 +1,54 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties } from "react";
 import type { EventData } from "../data/invitation";
 import type { EventWallpaper } from "../data/themes";
 import { parseEventDate } from "../data/invitation";
 import { useActiveTheme } from "../data/useTheme";
 import { prefersReducedMotion } from "../lib/motion";
-import {
-  EventEmblem,
-  HairRule,
-  JharokhaArch,
-  ThemeCorner,
-  motifForEvent,
-} from "./decor/Ornaments";
+import { HairRule, JharokhaArch, ThemeCorner, motifForEvent } from "./decor/Ornaments";
 
 /**
  * The Celebrations — the events chapter as a reel of designed pages
  * from a single printed invitation suite.
  *
  * Each ceremony is ONE complete full-screen scene (data-reel-scene):
- * one viewport, one owned background, one composed page. Everything
- * belonging to a page — its paper/artwork, frame, ghost art, emblem,
- * title, date, venue, directions — lives inside its own 100dvh
- * section, so the whole scene moves together as one physical card
- * when the reel advances (see useReelPager in PublicInvitation).
+ * one viewport, one owned background, one composed page, moving
+ * together as one physical card when the reel advances (see
+ * useReelPager in PublicInvitation).
  *
- * Every page is built like a leaf of luxury Indian wedding stationery,
- * not like a website block:
- *   · an inset double hairline frame with small corner florets — the
- *     printed card's edge
- *   · a whisper of the invitation's own jharokha arch rising behind
- *     the composition
- *   · a per-ceremony watercolour breath (sage / marigold / dusk blue /
- *     blush) and the ceremony's own line-drawn emblem as the anchor
- *   · the same three-voice type system as the Couple and Date scenes:
- *     Fraunces for the ceremony name, engraved Cormorant for the date,
- *     Cormorant SC small-caps for every label, italic Cormorant for
- *     the spoken detail
- *   · a refined, printed-ticket VIEW DIRECTIONS action
+ * REDESIGNED around the Theme 1 event artwork (measured directly from
+ * the shipped files — see the pixel-sampling notes below, not guessed):
+ * every ceremony's `eventBackgrounds` image is a flat-lay photograph of
+ * an ornamental gold-framed PLAQUE with the ceremony's own name already
+ * engraved into a ribbon banner near its top, and a large blank cream
+ * panel beneath that banner — the artwork's OWN designed text-safe
+ * area. Measured across all five shipped images (haldi/mehendi/sangeet/
+ * wedding/reception, each 768×1376): that blank panel sits at a
+ * consistent ≈37–72% of image height and ≈16–83% of image width. Since
+ * `object-fit: cover` height-matches this portrait art on every phone
+ * (identical principle to the Couple scene's video — see brain.md
+ * "Artwork geometry facts"), a vertical image-% maps directly to the
+ * same dvh-%, so the content wrapper below is positioned at ≈39.5–68dvh
+ * (a deliberately conservative INTERSECTION of all five images' own
+ * measured ranges, not the loosest one).
  *
- * Every ceremony page is set on ITS OWN artwork, taken from
- * `ThemeAssets.eventBackgrounds` → that ceremony's own file in
- * `public/themes/theme-1/images/`, applied ONCE and permanently as the
- * scene's back layer (see EventBackdrop): no rotation, no timers, nothing
- * that can reset underneath the guest. The main wedding ceremony is the
- * centrepiece, with the strongest type treatment.
+ * The artwork therefore now supplies the ceremony's name/title, its
+ * ornamental frame and its cultural identity — the old code-generated
+ * title + circular emblem/medallion that used to sit above the name is
+ * GONE, along with the per-page double-hairline card envelope (the
+ * photograph already has its own elaborate gold framing; a second frame
+ * drawn over it was pure repetition). The ONLY thing the app still
+ * overlays is what genuinely needs to stay dynamic/editable: DATE and
+ * VENUE, placed inside that measured blank panel, sized and coloured to
+ * read as ink printed on the same cream card the ceremony name already
+ * sits on — same three-voice type system as the Couple/Date scenes
+ * (Fraunces for the day numeral, Cormorant SC small-caps for labels).
+ *
+ * A page with no matching theme artwork (not something any shipped
+ * event hits today, but the data model allows a custom event with no
+ * motif match) falls back to the earlier plain-paper treatment — its
+ * own title text, the invitation's own arch ghost, and the printed
+ * card envelope — since there is no photograph to supply a name there.
  *
  * The chapter opens with a single divider page ("The Celebrations")
  * so the Date scene hands off to a designed page before the
@@ -51,7 +56,6 @@ import {
  */
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
-const ROMAN = ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"];
 
 /* the printed card's ground — a warm ivory paper, the same family as
    the invitation's paper world; owned by each scene so it scrolls with it */
@@ -68,13 +72,11 @@ const ACCENTS: Record<string, string> = {
   reception: "rgba(214,162,146,0.16)", // gentle blush
 };
 const accentFor = (motif: string) => ACCENTS[motif] ?? "rgba(200,170,110,0.14)";
-
-/* the legibility wash that sits between a page's painted artwork and its
-   type — a warm veil hugging the composition, never a panel and never a
-   dark overlay. It is what lets the same printed ink colours (dark
-   Fraunces / Cormorant) stay readable on every ceremony's backdrop. */
-const ART_WASH =
-  "radial-gradient(ellipse 88% 62% at 50% 44%, rgba(252,247,237,0.52) 0%, rgba(252,247,237,0.24) 52%, transparent 78%)";
+/* the watercolour breath above is now only applied on the plain-paper
+   fallback — a page WITH real theme artwork is already a professionally
+   colour-graded photograph and does not need a wash laid over it (the
+   old legibility veil this file used to layer on top of the artwork,
+   `ART_WASH`, is removed for the same reason — see EventScene). */
 
 function useInView<T extends HTMLElement>(threshold = 0.3) {
   const ref = useRef<T | null>(null);
@@ -160,13 +162,13 @@ function EventBackdrop({ wallpaper }: { wallpaper: EventWallpaper }) {
    with a floret at each corner — the stationery "card edge" that every
    page of the chapter shares.
 
-   `onArt` switches the hairlines to a warm cream: every ceremony page
-   now sits on painted artwork, and a gold hairline would dissolve into
-   the painting's own cream arch. Gold stays the ink on plain paper
-   pages, and the corner florets stay gold either way (as they always
-   have on the wedding page). */
-function PageEnvelope({ onArt }: { onArt?: boolean }) {
-  const ink = onArt ? "rgba(252,248,240,0.5)" : "var(--gold-invite)";
+   Only used on plain paper now (TitleScene, and an event page with no
+   matching artwork) — a page WITH its own photographed gold plaque frame
+   never gets a second drawn frame on top of it (see EventScene). So the
+   ink is always the gold-on-paper treatment; the old `onArt` cream-ink
+   variant was dead once every shipped ceremony got real artwork. */
+function PageEnvelope() {
+  const ink = "var(--gold-invite)";
   const inset = "clamp(10px, 2.4vw, 18px)";
   const corners = ["tl", "tr", "br", "bl"] as const;
   const cornerPos: Record<(typeof corners)[number], CSSProperties> = {
@@ -178,19 +180,11 @@ function PageEnvelope({ onArt }: { onArt?: boolean }) {
   return (
     <div aria-hidden="true" className="absolute inset-0 pointer-events-none" style={{ zIndex: 3 }}>
       {/* outer hairline */}
-      <div
-        className="absolute"
-        style={{ inset, border: "1px solid", borderColor: ink, opacity: onArt ? 0.5 : 0.34 }}
-      />
+      <div className="absolute" style={{ inset, border: "1px solid", borderColor: ink, opacity: 0.34 }} />
       {/* inner hairline, offset a breath */}
       <div
         className="absolute"
-        style={{
-          inset: `calc(${inset} + 5px)`,
-          border: "1px solid",
-          borderColor: ink,
-          opacity: onArt ? 0.3 : 0.16,
-        }}
+        style={{ inset: `calc(${inset} + 5px)`, border: "1px solid", borderColor: ink, opacity: 0.16 }}
       />
       {corners.map((c) => (
         <span key={c} className="absolute" style={{ ...cornerPos[c], color: "var(--gold-invite)" }}>
@@ -295,46 +289,6 @@ function TitleScene({ reduce }: { reduce: boolean }) {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Medallion — the ceremony emblem's delicate double-ring housing.
-   ───────────────────────────────────────────────────────────── */
-function Medallion({ children, hero }: { children: ReactNode; hero?: boolean }) {
-  const size = hero ? "clamp(96px, 26dvh, 128px)" : "clamp(86px, 23dvh, 108px)";
-  return (
-    <span
-      className="inline-flex items-center justify-center"
-      style={{
-        position: "relative",
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        border: "1px solid rgba(184,148,63,0.5)",
-        color: "var(--gold-invite)",
-        background: "rgba(252,249,242,0.4)",
-      }}
-      aria-hidden="true"
-    >
-      <span
-        className="absolute"
-        style={{
-          inset: 5,
-          borderRadius: "50%",
-          border: "1px solid rgba(184,148,63,0.22)",
-        }}
-      />
-      <span
-        className="absolute"
-        style={{
-          inset: 9,
-          borderRadius: "50%",
-          border: "1px dashed rgba(184,148,63,0.28)",
-        }}
-      />
-      <span className="relative flex items-center justify-center">{children}</span>
-    </span>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
    DirectionsAction — a refined printed-ticket action: a location
    pin in a whisper-thin circle + tracked small caps, sitting on a
    hairline underline. Understated, never a SaaS button.
@@ -392,26 +346,19 @@ function DirectionsAction({ href }: { href: string }) {
    ───────────────────────────────────────────────────────────── */
 function EventScene({
   event,
-  index,
-  hero,
   reduce,
 }: {
   event: EventData;
-  index: number;
-  hero: boolean;
   reduce: boolean;
 }) {
   const theme = useActiveTheme();
   const sceneRef = useRef<HTMLElement | null>(null);
   const [inView, setInView] = useState(false);
-  const [imgOk, setImgOk] = useState(true);
   const d = parseEventDate(event.date);
   const weekday = d.toLocaleDateString("en-US", { weekday: "long" });
   const month = d.toLocaleDateString("en-US", { month: "long" }).toUpperCase();
   const dayNum = d.getDate();
   const motif = motifForEvent(event);
-  const hasImage = !!event.image && imgOk;
-  const chapter = ROMAN[index] ?? String(index + 1);
   /* this ceremony's OWN artwork, from the theme's asset map — never a path
      hardcoded here (see ThemeAssets.eventBackgrounds). One painting per
      event, applied permanently by `EventBackdrop` below. */
@@ -454,140 +401,108 @@ function EventScene({
           (theme.assets.eventBackgrounds, keyed by the ceremony's motif),
           rendered statically on top of the printed card's paper ground —
           so it is always present, never cycles, and a slow or missing
-          image can never leave a blank page.
-
-          It is the page's BACK layer (z-index 0, behind the ceremony's
-          watercolour breath, the warm legibility veil, the printed
-          envelope and all of the type), it takes no gestures, and it
-          moves with its own scene as one unit — exactly like every other
+          image can never leave a blank page. It takes no gestures and
+          moves with its own scene as one unit, exactly like every other
           full-screen page of the reel. */}
       {art ? (
         <EventBackdrop wallpaper={art} />
       ) : (
-        <div aria-hidden="true" className="absolute inset-0" style={{ zIndex: 0, background: PAPER }} />
-      )}
-      {/* the ceremony's watercolour breath — the page's palette bleeding
-          into its artwork */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          zIndex: 1,
-          background: `radial-gradient(ellipse 92% 58% at 50% 20%, ${accentFor(motif)} 0%, transparent 72%)`,
-        }}
-      />
-      {art ? (
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 pointer-events-none"
-          style={{ zIndex: 1, background: ART_WASH }}
-        />
-      ) : (
-        /* no artwork for this ceremony — the invitation's own arch rises
-           behind the composition instead */
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 pointer-events-none flex justify-center"
-          style={{ zIndex: 1, opacity: 0.05 }}
-        >
-          <JharokhaArch width={280} />
-        </div>
-      )}
-
-      {/* the stationery envelope — frame + corner florets */}
-      <PageEnvelope onArt={!!art} />
-
-      {/* ── the page's content ── */}
-      <div
-        className="absolute inset-0 flex flex-col items-center justify-center text-center"
-        style={{
-          zIndex: 10,
-          paddingTop: "max(clamp(48px, 9dvh, 72px), env(safe-area-inset-top))",
-          paddingBottom: "max(clamp(48px, 9dvh, 72px), env(safe-area-inset-bottom))",
-          paddingLeft: "clamp(22px, 6vw, 46px)",
-          paddingRight: "clamp(22px, 6vw, 46px)",
-          userSelect: "none",
-          WebkitUserSelect: "none",
-        }}
-      >
-        <div className="flex flex-col items-center" style={{ width: "100%", maxWidth: 460 }}>
-          {/* chapter mark — a whisper, flanked by hairlines */}
+        <>
+          {/* no matching theme artwork for this ceremony (not something
+              any shipped event hits — every ceremony motif has its own
+              photographed plaque — but the data model allows a custom
+              event with no motif match): fall back to plain paper, the
+              invitation's own arch ghost, the printed card envelope and
+              this ceremony's own title text, since there is no
+              photograph here to supply one. */}
+          <div aria-hidden="true" className="absolute inset-0" style={{ zIndex: 0, background: PAPER }} />
           <div
-            className="flex items-center"
-            style={{ ...step(0), gap: 10 }}
             aria-hidden="true"
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              zIndex: 1,
+              background: `radial-gradient(ellipse 92% 58% at 50% 20%, ${accentFor(motif)} 0%, transparent 72%)`,
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 pointer-events-none flex justify-center"
+            style={{ zIndex: 1, opacity: 0.05 }}
           >
-            <span style={{ width: 26, height: 1, background: "linear-gradient(90deg, transparent, var(--gold-invite))", opacity: 0.4 }} />
-            <span
+            <JharokhaArch width={280} />
+          </div>
+          <PageEnvelope />
+        </>
+      )}
+
+      {/* ── the page's content — DATE and VENUE only ──────────────────
+          The artwork itself now supplies the ceremony's name/title (an
+          engraved gold ribbon painted into every theme-1 event photo)
+          and its ornamental frame — the app no longer draws a title,
+          emblem or second frame on top of it. This wrapper is
+          positioned inside the artwork's OWN measured blank text panel:
+          sampled directly from the shipped 768×1376 photographs
+          (haldi/mehendi/sangeet/wedding/reception all agree closely),
+          that panel sits at ≈37–72% of image height and ≈16–83% of
+          width. `top`/`bottom` below use a deliberately conservative
+          39.5–68dvh — the intersection of all five measured ranges,
+          not the loosest one — because `object-fit: cover` height-
+          matches this portrait art on every phone (identical principle
+          to the Couple scene's video: see brain.md "Artwork geometry
+          facts"), so an image-height-% maps directly to the same dvh-%.
+          When there's no artwork (fallback above), the same wrapper
+          just centres in the full viewport instead — plain paper has no
+          fixed panel to target. */}
+      <div
+        className="absolute inset-x-0 flex flex-col items-center text-center"
+        style={
+          art
+            ? {
+                zIndex: 10,
+                top: "39.5dvh",
+                bottom: "32dvh",
+                justifyContent: "center",
+                padding: "0 clamp(20px, 6vw, 32px)",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+              }
+            : {
+                zIndex: 10,
+                top: 0,
+                bottom: 0,
+                justifyContent: "center",
+                padding: "0 clamp(22px, 6vw, 46px)",
+                userSelect: "none",
+                WebkitUserSelect: "none",
+              }
+        }
+      >
+        <div
+          className="flex flex-col items-center"
+          style={{ width: "100%", maxWidth: art ? "min(70vw, 280px)" : 460 }}
+        >
+          {/* the fallback-only title — real artwork already has its own
+              engraved name, so this never renders alongside a photo */}
+          {!art && (
+            <h2
               style={{
-                fontFamily: "'Cormorant', serif",
-                fontStyle: "italic",
-                color: "var(--gold-invite-dim)",
-                fontSize: "clamp(10px, 2.6vw, 12px)",
-                letterSpacing: "0.32em",
-                marginLeft: "0.32em",
+                ...step(0),
+                fontFamily: "var(--font-couple)",
+                fontVariationSettings: '"opsz" 96, "SOFT" 45, "WONK" 0',
+                fontWeight: 500,
+                color: "var(--text-primary)",
+                fontSize: "clamp(31px, min(8.8vw, 10.5dvh), 43px)",
+                letterSpacing: "0.01em",
+                lineHeight: 1.06,
+                marginBottom: "clamp(11px, 2.4dvh, 17px)",
               }}
             >
-              {chapter}
-            </span>
-            <span style={{ width: 26, height: 1, background: "linear-gradient(90deg, var(--gold-invite), transparent)", opacity: 0.4 }} />
-          </div>
+              {event.name}
+            </h2>
+          )}
 
-          {/* the visual anchor — the ceremony's emblem in its ring */}
-          <div style={{ ...step(1), marginTop: "clamp(10px, 2.4dvh, 18px)" }}>
-            {hasImage ? (
-              <div style={{ padding: 5, border: "1px solid rgba(184,148,63,0.45)", background: "rgba(252,249,242,0.75)" }}>
-                <img
-                  src={event.image}
-                  alt={event.name}
-                  onError={() => setImgOk(false)}
-                  loading="lazy"
-                  style={{ display: "block", maxWidth: "min(52vw, 200px)", maxHeight: "clamp(90px, 22dvh, 140px)", objectFit: "contain" }}
-                />
-              </div>
-            ) : (
-              <Medallion hero={hero}>
-                <EventEmblem motif={motif} size={hero ? 52 : 46} />
-              </Medallion>
-            )}
-          </div>
-
-          {/* the hero — the event name */}
-          <h2
-            style={{
-              ...step(2),
-              marginTop: "clamp(14px, 3.2dvh, 22px)",
-              fontFamily: "var(--font-couple)",
-              fontVariationSettings: hero
-                ? '"opsz" 110, "SOFT" 55, "WONK" 0'
-                : '"opsz" 96, "SOFT" 45, "WONK" 0',
-              fontWeight: 500,
-              color: "var(--text-primary)",
-              fontSize: hero
-                ? "clamp(36px, min(10.4vw, 12.5dvh), 52px)"
-                : "clamp(31px, min(8.8vw, 10.5dvh), 43px)",
-              letterSpacing: "0.01em",
-              lineHeight: 1.06,
-            }}
-          >
-            {event.name}
-          </h2>
-
-          {/* quiet rule */}
-          <div style={{ ...step(3), marginTop: "clamp(11px, 2.4dvh, 17px)" }}>
-            <HairRule width={hero ? 148 : 122} node="diamond" style={{ opacity: 0.9 }} />
-          </div>
-
-          {/* the date anchor — engraved, invitation-styled */}
-          <div
-            style={{
-              ...step(4),
-              marginTop: "clamp(13px, 2.8dvh, 20px)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-            }}
-          >
+          {/* the date — engraved, invitation-styled */}
+          <div style={{ ...step(1), display: "flex", flexDirection: "column", alignItems: "center" }}>
             <span
               className="font-sc"
               style={{
@@ -643,7 +558,7 @@ function EventScene({
           </div>
 
           {/* the venue — secondary but designed */}
-          <div style={{ ...step(5), marginTop: "clamp(13px, 2.9dvh, 20px)" }}>
+          <div style={{ ...step(2), marginTop: "clamp(13px, 2.9dvh, 20px)" }}>
             <span
               className="font-sc"
               style={{
@@ -673,27 +588,10 @@ function EventScene({
             )}
           </div>
 
-          {/* a short spoken detail — italic, quiet */}
-          {event.description && (
-            <p
-              style={{
-                ...step(6),
-                marginTop: "clamp(11px, 2.4dvh, 16px)",
-                maxWidth: 330,
-                color: "var(--text-secondary)",
-                fontFamily: "'Cormorant', serif",
-                fontStyle: "italic",
-                fontSize: "clamp(11.5px, 3.1vw, 13px)",
-                lineHeight: 1.55,
-              }}
-            >
-              {event.description}
-            </p>
-          )}
-
-          {/* the action — refined and invitation-appropriate */}
+          {/* the action — refined and invitation-appropriate; part of
+              the venue/location details, so it stays */}
           {event.directionsUrl && (
-            <div style={{ ...step(7), marginTop: "clamp(15px, 3.4dvh, 22px)" }}>
+            <div style={{ ...step(3), marginTop: "clamp(13px, 2.8dvh, 18px)" }}>
               <DirectionsAction href={event.directionsUrl} />
             </div>
           )}
@@ -712,19 +610,11 @@ export default function EventsSection({ events }: { events: EventData[] }) {
 
   if (!events || events.length === 0) return null;
 
-  const heroIndex = events.findIndex((e) => motifForEvent(e) === "wedding");
-
   return (
     <>
       <TitleScene reduce={reduce} />
-      {events.map((event, i) => (
-        <EventScene
-          key={event.id}
-          event={event}
-          index={i}
-          hero={i === heroIndex}
-          reduce={reduce}
-        />
+      {events.map((event) => (
+        <EventScene key={event.id} event={event} reduce={reduce} />
       ))}
     </>
   );

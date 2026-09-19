@@ -2,10 +2,10 @@ import type { CSSProperties } from "react";
 
 /**
  * ScrollCue — the invitation's one way of asking the guest to move on:
- * a thin-line downward arrow with a tracked SCROLL NOW wordmark beneath
- * it, carried on a soft pool of warm light. Arrow above, words below, in
- * the direction the guest should travel. No button chrome, no pill, no
- * card, no glass plate — the brightness is LIGHT, not a panel.
+ * a thin-line downward arrow with a tracked wordmark ("Begin Our Story")
+ * beneath it, carried on a soft pool of warm light. Arrow above, words
+ * below, in the direction the guest should travel. No button chrome, no
+ * pill, no card, no glass plate — the brightness is LIGHT, not a panel.
  *
  * Why it is built this way:
  *
@@ -36,7 +36,7 @@ import type { CSSProperties } from "react";
 export default function ScrollCue({
   shown,
   reduceMotion,
-  label = "Scroll Now",
+  label = "Begin Our Story",
   style,
 }: {
   /** drives the wordmark's entrance and the pulse */
@@ -66,7 +66,7 @@ export default function ScrollCue({
           position: "absolute",
           left: "50%",
           top: "50%",
-          width: "clamp(140px, 38dvw, 190px)",
+          width: "clamp(160px, 44dvw, 220px)",
           height: "clamp(110px, 24dvh, 150px)",
           transform: "translate(-50%, -50%)",
           background:
@@ -117,9 +117,9 @@ export default function ScrollCue({
             fontWeight: 600,
             color: "var(--ivory, #f7f2e6)",
             fontSize: "clamp(9.5px, 2.5vw, 11.5px)",
-            letterSpacing: "0.42em",
+            letterSpacing: "0.32em",
             // tracking compensation — the established label pattern
-            marginLeft: "0.42em",
+            marginLeft: "0.32em",
             textTransform: "uppercase",
             whiteSpace: "nowrap",
             // a tight dark offset for the painting's light areas, then a warm
