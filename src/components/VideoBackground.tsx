@@ -1,4 +1,5 @@
 import { forwardRef } from "react";
+import type { SyntheticEvent } from "react";
 
 /**
  * The couple cinematic background. It is the background of the couple
@@ -33,8 +34,9 @@ const VideoBackground = forwardRef<
     className?: string;
     style?: React.CSSProperties;
     onEnded?: () => void;
+    onError?: (e: SyntheticEvent<HTMLVideoElement>) => void;
   }
->(function VideoBackground({ src, poster, className = "", style = {}, onEnded }, ref) {
+>(function VideoBackground({ src, poster, className = "", style = {}, onEnded, onError }, ref) {
   return (
     <div className={`absolute inset-0 overflow-hidden ${className}`} style={style}>
       <video
@@ -45,6 +47,7 @@ const VideoBackground = forwardRef<
         preload="auto"
         poster={poster}
         onEnded={onEnded}
+        onError={onError}
       >
         <source src={src} type="video/mp4" />
       </video>

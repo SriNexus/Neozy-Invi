@@ -30,11 +30,12 @@ export interface CoupleData {
 }
 
 export interface WeddingDate {
-  /** ISO date string: "2026-12-12" */
+  /** ISO date string: "2026-12-04" */
   date: string;
-  /** Display time: "10:00 AM" */
+  /** Display time — ALSO the actual source of the hour/minute used to
+   *  build the real wedding `Date` (see `getWeddingDate` below): "6:00 PM" */
   time?: string;
-  /** Formatted display date: "Saturday, 12th December" */
+  /** Formatted display date: "Friday, 4th December" */
   displayDate?: string;
   /** Formatted display venue line: "Bengaluru · India" */
   displayVenue?: string;
@@ -155,9 +156,9 @@ export const invitation: InvitationData = {
     tagline: "Two souls, one story",
   },
   wedding: {
-    date: "2026-12-12",
-    time: "10:00 AM",
-    displayDate: "Saturday, 12th December",
+    date: "2026-12-04",
+    time: "6:00 PM",
+    displayDate: "Friday, 4th December",
     displayVenue: "Bengaluru \u00B7 India",
   },
   events: [
@@ -197,8 +198,8 @@ export const invitation: InvitationData = {
     {
       id: "wedding",
       name: "Wedding",
-      date: "2026-12-12",
-      time: "10:00 AM",
+      date: "2026-12-04",
+      time: "6:00 PM",
       venue: "The Grand Palace",
       address: "MG Road, Bengaluru",
       description: "The moment we've been waiting for — when two hearts become one.",
@@ -220,8 +221,8 @@ export const invitation: InvitationData = {
   venue: {
     name: "The Grand Palace",
     address: "123 MG Road, Bengaluru, Karnataka 560001",
-    date: "2026-12-12",
-    time: "10:00 AM",
+    date: "2026-12-04",
+    time: "6:00 PM",
     directionsUrl: "https://maps.google.com/?q=MG+Road+Bengaluru",
   },
   gallery: [],
@@ -256,9 +257,27 @@ export const invitation: InvitationData = {
    Derived helpers
    ─────────────────────────────────────────────────────────────────── */
 
+/** Parse a display time like "6:00 PM" / "10:00 AM" into 24-hour
+ *  hours/minutes. Falls back to midnight for a missing/unparseable
+ *  string rather than a silently wrong guessed hour. */
+function parseTimeOfDay(time: string | undefined): { hours: number; minutes: number } {
+  const m = time && /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i.exec(time.trim());
+  if (!m) return { hours: 0, minutes: 0 };
+  let hours = Number(m[1]) % 12;
+  if (/pm/i.test(m[3])) hours += 12;
+  return { hours, minutes: Number(m[2]) };
+}
+
+/** The ONE source of truth for the wedding's actual date + time — every
+ *  display (Save the Date, its countdown, the weekday shown anywhere)
+ *  must derive from this, never a separately hardcoded hour. Previously
+ *  hardcoded `10, 0, 0` regardless of `inv.wedding.time`, which silently
+ *  desynced the countdown's real target from whatever time was shown as
+ *  text — fixed to actually parse `inv.wedding.time`. */
 export function getWeddingDate(inv: InvitationData): Date {
   const [y, m, d] = inv.wedding.date.split("-").map(Number);
-  return new Date(y, m - 1, d, 10, 0, 0);
+  const { hours, minutes } = parseTimeOfDay(inv.wedding.time);
+  return new Date(y, m - 1, d, hours, minutes, 0);
 }
 
 /** Parse an ISO "YYYY-MM-DD" into a local Date at midnight. */

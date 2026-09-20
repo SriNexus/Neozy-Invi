@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { SyntheticEvent } from "react";
 import Cover from "../components/Cover";
-import OpeningVideo from "../components/OpeningVideo";
 import CoupleIntro from "../components/CoupleIntro";
 import DateReveal from "../components/DateReveal";
 import SoundToggle from "../components/SoundToggle";
@@ -20,17 +18,30 @@ import { useReelPager } from "../lib/useReelPager";
 /**
  * Guest journey:
  *
- *   COVER ─tap→ GATE FILM ─ends→ (crossfade) ─→ COUPLE INTRO ─arrow→ scroll on
+ *   COVER ─tap→ COUPLE INTRO (ONE continuous gate film: envelope → couple
+ *   illustration → WELCOME TEXT (9–14s, a short cinematic phrase, never the
+ *   couple's names) → arched frame → COUPLE CONTENT (bride name, her
+ *   parent line, wedding-hands, groom name, his parent line — 17s+) →
+ *   film ends → arrow) ─arrow→ scroll on
  *
- * The couple background video (below) plays exactly ONCE — no `loop`, and
- * `currentTime` is never reset. `CoupleIntro` pauses it when its sequence
- * settles and it then stays frozen on its final frame; nothing (render,
- * scroll, resize, StrictMode) ever restarts it.
+ * The gate film (gate-cinematic.mp4) IS this scene's ONLY background —
+ * there is no "couple background video" and no card/panel layered over
+ * it at any point (the old ivory Couple Card container was removed by
+ * explicit request; see CoupleIntro.tsx's own header for the full
+ * rationale — the CONTENT it held — names, parent lines, wedding-hands —
+ * was NOT removed with it, and is composited directly onto the film).
+ * The film is mounted once, inside `CoupleIntro`, from the very first
+ * render (paused on its first frame, hidden behind the opaque Cover). The
+ * guest's tap calls `.play()` on that SAME element and fades the Cover
+ * away — the film is never remounted, never reset, never looped.
+ * `CoupleIntro`'s whole foreground sequence (welcome text, then the
+ * couple content, then the arrow) is driven off that one video's own
+ * `currentTime`/`ended`, not a wall-clock timer, so it always tracks what
+ * the guest is actually seeing.
  *
  * Each cinematic scene owns its OWN background so it moves as one unit:
- *   COUPLE INTRO renders the couple <video> as its section background;
- *   DATE REVEAL renders the film's frozen final frame (couple-poster.jpg,
- *   themes/theme-1/images)
+ *   COUPLE INTRO renders the gate film as its section background;
+ *   DATE REVEAL renders its own dedicated artwork (theme.assets.dateRevealPoster)
  *   as its section background. Scrolling from one scene to the next moves
  *   background + foreground together — nothing stays fixed behind.
  *   WORLD B — a single fixed opaque paper ground sits behind everything
@@ -48,12 +59,15 @@ import { useReelPager } from "../lib/useReelPager";
  * audio, started inside the guest's tap, then only muted/unmuted.
  */
 
-type Stage = "cover" | "video" | "card";
-
 export default function PublicInvitation() {
-  const [stage, setStage] = useState<Stage>("cover");
+  const [revealed, setRevealed] = useState(false);
   const [audioOn, setAudioOn] = useState(true);
   const [introDone, setIntroDone] = useState(false);
+  // true only if the film could not be played at all (rare autoplay/
+  // decode failure) — CoupleIntro then jumps straight to its finished
+  // state (full couple content + arrow) instead of waiting on a video
+  // that will never advance.
+  const [videoUnavailable, setVideoUnavailable] = useState(false);
   const invitation = useInvitationStore();
   const theme = useActiveTheme();
   useThemeApplication();
@@ -64,20 +78,15 @@ export default function PublicInvitation() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const tapStartedRef = useRef(false);
 
-  const coupleVideoRef = useRef<HTMLVideoElement | null>(null);
-  const coupleStartedRef = useRef(false);
-  const coupleLockedRef = useRef(false); // true once the intro has frozen it — never play again
-
   const dateRevealRef = useRef<HTMLDivElement | null>(null);
 
   // ONE full-screen scene navigator for the whole cinematic reel. It is
   // armed the moment the guest is allowed to scroll (after the intro's
   // golden arrow appears).
-  const reelArmed = stage === "card" && introDone;
+  const reelArmed = revealed && introDone;
   useReelPager(reelArmed);
 
   const weddingDate = useMemo(() => getWeddingDate(invitation), [invitation]);
-  const inCard = stage === "card";
 
   const dateParts = useMemo(() => {
     const day = String(weddingDate.getDate());
@@ -87,27 +96,15 @@ export default function PublicInvitation() {
     return { day, month, year, weekday };
   }, [weddingDate]);
 
-  /* ── Start the couple video exactly once ──────────────────────────
-     Deferred one frame so the scroll document has flipped to
-     `display:block` first — the <video> now lives inside CoupleIntro,
-     and playback must never be kicked off while it is display:none. */
-  const startCoupleVideo = useCallback(() => {
-    if (coupleStartedRef.current || coupleLockedRef.current) return;
-    coupleStartedRef.current = true;
-    const play = () => {
-      const v = coupleVideoRef.current;
-      if (!v || coupleLockedRef.current) return;
-      v.muted = true;
-      const p = v.play();
-      if (p && typeof p.catch === "function") p.catch(() => {});
-    };
-    requestAnimationFrame(play);
-  }, []);
-
-  /* ── Tap → audio + gate film ─────────────────────────────────── */
+  /* ── Tap → audio + the gate film, in place ─────────────────────────
+     The <video> already lives inside CoupleIntro (mounted from first
+     render, paused on frame 0, hidden behind the opaque Cover) — the tap
+     only starts ITS playback and fades the Cover away. Nothing is
+     swapped or remounted. */
   const handleReveal = useCallback(() => {
     if (tapStartedRef.current) return;
     tapStartedRef.current = true;
+    setRevealed(true);
 
     const audio = audioRef.current;
     if (audio && invitation.music.enabled) {
@@ -118,34 +115,16 @@ export default function PublicInvitation() {
     setAudioOn(true);
 
     const gate = gateRef.current;
-    if (gate) {
-      gate.currentTime = 0;
-      gate.muted = true;
-      const p = gate.play();
-      if (p && typeof p.catch === "function") {
-        p.catch(() => { startCoupleVideo(); setStage("card"); });
-      }
-      setStage("video");
-    } else {
-      startCoupleVideo();
-      setStage("card");
+    if (!gate) {
+      setVideoUnavailable(true);
+      return;
     }
-  }, [invitation.music.enabled, startCoupleVideo]);
-
-  // gate film finished (or errored) → crossfade into the couple intro
-  const handleGateEnd = useCallback(() => {
-    startCoupleVideo();
-    setStage("card");
-  }, [startCoupleVideo]);
-
-  const handleGateError = useCallback(
-    (e: SyntheticEvent<HTMLVideoElement>) => {
-      if (e.target !== gateRef.current) return;
-      startCoupleVideo();
-      setStage("card");
-    },
-    [startCoupleVideo],
-  );
+    gate.muted = true;
+    const p = gate.play();
+    if (p && typeof p.catch === "function") {
+      p.catch(() => setVideoUnavailable(true));
+    }
+  }, [invitation.music.enabled]);
 
   const handleToggleAudio = useCallback(() => {
     const audio = audioRef.current;
@@ -154,16 +133,14 @@ export default function PublicInvitation() {
     setAudioOn(!audio.muted);
   }, []);
 
-  // couple video reaches its natural end before the sequence does → freeze
-  const handleCoupleVideoEnded = useCallback(() => {
-    coupleLockedRef.current = true;
-    const v = coupleVideoRef.current;
-    if (v && !v.paused) { try { v.pause(); } catch { /* noop */ } }
+  // the film failed mid-playback (not just failed to start) — same
+  // fallback as a failed .play(): jump straight to the finished state.
+  const handleGateError = useCallback(() => {
+    setVideoUnavailable(true);
   }, []);
 
-  // CoupleIntro finished its sequence (video already paused) → lock + release
+  // CoupleIntro finished its sequence (film ended, arrow shown) → release
   const handleIntroComplete = useCallback(() => {
-    coupleLockedRef.current = true;
     setIntroDone(true);
   }, []);
 
@@ -178,40 +155,35 @@ export default function PublicInvitation() {
         released the moment the golden arrow appears ─────────────── */
   useEffect(() => {
     const root = document.documentElement;
-    const locked = stage !== "card" || !introDone;
+    const locked = !introDone;
     if (locked) {
       const prev = root.style.overflow;
       root.style.overflow = "hidden";
-      if (stage !== "card") window.scrollTo(0, 0);
+      if (!revealed) window.scrollTo(0, 0);
       return () => { root.style.overflow = prev; };
     }
     root.style.overflow = "";
-  }, [stage, introDone]);
+  }, [revealed, introDone]);
 
-  const openingActive = stage !== "card";
-  const showChrome = inCard && introDone;
+  const showChrome = revealed && introDone;
 
   return (
     <>
-      {/* ── Gate film (crossfades out into the couple video) ── */}
+      {/* ── Cover — the tap target. It is the ONLY thing that fades away;
+           the gate film underneath (inside CoupleIntro, below) is never
+           swapped or remounted, only started. ── */}
       <div
         className="fixed inset-0 w-full overflow-hidden no-scrollbar"
         style={{
           height: "100dvh",
           background: "var(--ink)",
-          zIndex: openingActive ? 40 : -1,
-          pointerEvents: openingActive ? "auto" : "none",
-          opacity: stage === "card" ? 0 : 1,
+          zIndex: revealed ? -1 : 40,
+          pointerEvents: revealed ? "none" : "auto",
+          opacity: revealed ? 0 : 1,
           transition: "opacity 900ms ease",
         }}
       >
-        <Cover onReveal={handleReveal} disabled={stage !== "cover"} />
-        <OpeningVideo
-          ref={gateRef}
-          visible={stage === "video"}
-          onEnded={handleGateEnd}
-          onError={handleGateError}
-        />
+        <Cover onReveal={handleReveal} disabled={revealed} />
       </div>
 
       {/* ── World B — the single fixed opaque paper ground at the very
@@ -229,29 +201,27 @@ export default function PublicInvitation() {
         }}
       />
 
-      {/* ── Scroll document ── mounted from the moment of the tap (behind
-           the gate film), so the couple <video> inside CoupleIntro is a
-           live, visible element by the time the gate hands off to it and
-           `startCoupleVideo()` runs — never played while `display:none`.
+      {/* ── Scroll document ── mounted from the very first render (behind
+           the opaque Cover above), so the gate film inside CoupleIntro is
+           a live element, pre-buffering on its first frame, well before
+           the guest ever taps.
 
            Every full-screen reel scene is marked `data-reel-scene` —
            the one source of truth for useReelPager's geometry. ── */}
       <div
         className="no-scrollbar"
         style={{
-          display: stage === "cover" ? "none" : "block",
           minHeight: "100dvh",
           position: "relative",
           zIndex: 2,
         }}
       >
         <CoupleIntro
-          active={inCard}
+          active={revealed}
           couple={invitation.couple}
-          videoRef={coupleVideoRef}
-          videoSrc={theme.assets.wallpaperVideo}
-          videoPoster={theme.assets.wallpaperPoster}
-          onVideoEnded={handleCoupleVideoEnded}
+          videoRef={gateRef}
+          videoUnavailable={videoUnavailable}
+          onVideoError={handleGateError}
           reduceMotion={reduceMotion}
           onComplete={handleIntroComplete}
           onAdvance={scrollToDateReveal}
@@ -260,14 +230,14 @@ export default function PublicInvitation() {
         {/* DATE — one complete scene; the wrapper is the scene's mark */}
         <div ref={dateRevealRef} data-reel-scene>
           <DateReveal
-            visible={inCard}
+            visible={revealed}
             day={dateParts.day}
             month={dateParts.month}
             year={dateParts.year}
             weekday={dateParts.weekday}
             time={invitation.wedding.time}
             weddingDate={weddingDate}
-            bgPoster={theme.assets.wallpaperPoster}
+            bgPoster={theme.assets.dateRevealPoster}
             reduceMotion={reduceMotion}
           />
         </div>

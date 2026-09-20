@@ -13,12 +13,70 @@ interface Props {
   weekday: string;
   time?: string;
   weddingDate: Date;
-  /** the couple film's frozen final frame — this scene's OWN background,
+  /** this scene's OWN background — theme.assets.dateRevealPoster, a
+   *  dedicated "Save the Date" composition (see the layout notes below),
    *  rendered inside the section so background + date + countdown + cover
-   *  all scroll away together as one unit. */
+   *  all scroll away together as one unit. NOT the Couple Card's
+   *  wallpaper — that used to be shared here, which is why the geometry
+   *  notes below exist: swapping the asset meant the whole layout had to
+   *  be re-measured against the new artwork, not just re-skinned. */
   bgPoster: string;
   reduceMotion: boolean;
 }
+
+/* ── LAYOUT — measured against the CURRENT savethedate.jpg, pixel-
+   sampled and visually inspected, not guessed. IMPORTANT: the artwork
+   was replaced AGAIN since the previous pass (768×1376 → 784×1373, and
+   a genuinely different, monochrome antique-cream/rose-gold palette —
+   no more distinct pink/sage colour blocks) — every number below was
+   re-derived from scratch against the CURRENT file, none carried over.
+
+   The composition is: "SAVE THE DATE" lettered into the art up top
+   (≈0–22% height — the section adds NO heading of its own), then a
+   stack of nested scalloped frames roughly ≈23–68% height, then a large
+   OPEN cream field ≈68–90% height before a lotus-flower border confined
+   mostly to the bottom corners (with a small mandala emblem centred at
+   the very bottom, ≈94–100%):
+
+     · the innermost blank IVORY panel (scratch + date's original home)
+       is ≈31–60% height × ≈22–78% width — real, but visibly smaller
+       than the ornamental frame built around it, which is what read as
+       "still too small" even after a previous enlargement.
+     · the OUTER patterned square frame — the largest concentric
+       rectangle in the composition, before the corner paisley motifs
+       above it and the lotus border below it — is ≈26–66% height ×
+       ≈6–94% width. Sizing the scratch/date stage to (just inside) THIS
+       outer boundary, rather than the innermost panel, is what actually
+       delivers a clearly-noticeable, "roughly doubled" scratch image:
+       ≈48dvh vs. the innermost panel's own ≈31dvh-equivalent width — a
+       real jump, not a 10–20% nudge. A gold scratch card temporarily
+       overlapping the outer frame's own printed pattern is the same
+       thing a real scratch-off sticker does to whatever is printed
+       under it — once scratched away, the artwork is fully visible
+       again, so this is not a permanent collision with the artwork.
+     · below the frame stack, a large OPEN cream field, clear of any
+       decoration in its own horizontal centre from ≈68% down to ≈90% of
+       image height (the lotus-flower illustrations stay confined to the
+       outer ~30% on each side and only start that low) — a genuinely
+       generous, unbroken stage for the countdown, much larger than the
+       previous artwork's own dedicated pedestal shape.
+
+   Because `object-fit: cover` height-matches this portrait art on every
+   phone (same principle as the Couple scene's video — see brain.md
+   "Artwork geometry facts"), a measured image-height-% maps directly to
+   the same dvh-%. WIDTH does not map to vw the same reliable way (cover
+   only guarantees the HEIGHT axis matches 1:1; the width crop varies
+   with each device's own aspect ratio) — so a width that must track the
+   artwork's own composition is expressed in dvh too, via the image's own
+   aspect ratio (784/1373 ≈ 0.571), not vw: see `min(48dvh, …)` below. */
+const DATE_STAGE_TOP_DVH = 25;
+const DATE_STAGE_BOTTOM_DVH = 34; // = 100 − 66
+const COUNTDOWN_TOP_DVH = 68;
+// = 100 − 87: the open cream field actually runs clear to ≈90%, but the
+// zone is held a few dvh short of that so the boxes keep real breathing
+// room from the ScrollCue anchored near the very bottom of the section,
+// rather than using every last available pixel right up to it.
+const COUNTDOWN_BOTTOM_DVH = 13;
 
 /* the painted gold cover — a static reusable asset (public/themes/theme-1/images/scratch.png,
    1457×996, RGBA with a torn organic edge). It is ONLY a cover: the date and
@@ -74,22 +132,20 @@ function tiltOf(el: HTMLElement | null): number {
    the scratch always lands under the finger at any width.
    ─────────────────────────────────────────────────────────────── */
 function ScratchCover({
-  onFirstScratch,
   onRevealStart,
   onCoverGone,
   dismiss = false,
   reduceMotion,
   ariaLabel,
 }: {
-  onFirstScratch: () => void;
   /** fired the instant the ~50% threshold is crossed — the parent starts
    *  the date settle, the warm bloom and the celebration NOW, in parallel
    *  with the cover fade, so there is no visible cut between states */
   onRevealStart: () => void;
   /** fired once the cover has FULLY dissolved and may leave the DOM */
   onCoverGone: () => void;
-  /** the guest chose the "or tap to reveal" assist — dissolve the cover
-   *  down the same path instead of cutting it away */
+  /** the silent `!canScratch` fallback — dissolve the cover down the
+   *  same path instead of cutting it away */
   dismiss?: boolean;
   reduceMotion: boolean;
   ariaLabel: string;
@@ -101,13 +157,19 @@ function ScratchCover({
   const last = useRef<{ x: number; y: number } | null>(null);
   const done = useRef(false);
   const ready = useRef(false);
-  const started = useRef(false);
   const lastSample = useRef(0);
   const baseOpaque = useRef(0); // opaque sample count of the freshly-painted cover
   const [fading, setFading] = useState(false);
   // the rock HOLDS (pauses exactly where it is — no snap) while the guest
   // is scratching and while the cover dissolves
   const [hold, setHold] = useState(false);
+  // true from the guest's FIRST touch onward, forever — the idle rock is
+  // an invitation to scratch; once that invitation has been accepted it
+  // has nothing left to say, so it stays stopped for the rest of the
+  // scratching session instead of resuming between individual strokes.
+  // State, not a ref: it drives the render below, and refs must never
+  // be read during render.
+  const [everScratched, setEverScratched] = useState(false);
 
   /* paint the cover in, sized to the canvas' own pixel box (which
      carries the PNG's exact aspect ratio, so no distortion). Redraws
@@ -204,7 +266,7 @@ function ScratchCover({
     window.setTimeout(onCoverGone, FADE_MS);
   }, [onCoverGone]);
 
-  // the assist path ("or tap to reveal") dissolves on the same path
+  // the silent `!canScratch` fallback dissolves the cover on the same path
   useEffect(() => {
     if (dismiss) dissolve();
   }, [dismiss, dissolve]);
@@ -228,11 +290,6 @@ function ScratchCover({
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
       if (!canvas || !ctx || done.current || !ready.current) return;
-
-      if (!started.current) {
-        started.current = true;
-        onFirstScratch(); // one state update, ever — hide the hint
-      }
 
       // finger-tip brush — ~11% of the cover width across, soft at the rim.
       // Erases ONLY under/near the pointer via destination-out: soft
@@ -273,7 +330,7 @@ function ScratchCover({
         if (sampleCoverage() >= REVEAL_THRESHOLD) finish();
       }
     },
-    [sampleCoverage, onFirstScratch, finish],
+    [sampleCoverage, finish],
   );
 
   /* ── finger → canvas pixel ──────────────────────────────────────
@@ -326,9 +383,12 @@ function ScratchCover({
       className="absolute inset-0"
       style={{
         animation: reduceMotion ? "none" : "scratchRock 2.8s ease-in-out infinite",
-        // hold, don't jerk: the surface freezes where it is under the finger
-        // and while the cover dissolves
-        animationPlayState: hold || fading ? "paused" : "running",
+        // hold, don't jerk: the surface freezes where it is under the
+        // finger, while the cover dissolves, and — permanently, not just
+        // per-stroke — once scratching has actually begun at all
+        // (`everScratched`): the idle rock's job is inviting the FIRST
+        // touch, not accompanying every subsequent one.
+        animationPlayState: hold || fading || everScratched ? "paused" : "running",
         willChange: "transform",
       }}
     >
@@ -349,6 +409,7 @@ function ScratchCover({
           e.preventDefault();
           // freeze the rock for the stroke and capture the tilt it froze at
           tilt.current = tiltOf(shellRef.current);
+          setEverScratched(true);
           setHold(true);
           (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
           drawing.current = true;
@@ -380,11 +441,50 @@ function ScratchCover({
 }
 
 /* ───────────────────────────────────────────────────────────────
-   The date as one cinematic frame — dynamic DOM, never an image.
-   The numeral is the anchor; the month is a wordmark tracked to
-   the numeral's width; weekday and year/time are readable at a
-   glance. Same identity serif as the couple names.
-   ─────────────────────────────────────────────────────────────── */
+   The date as one cinematic frame — dynamic DOM, never an image. ONE
+   designed lockup (weekday → day → month → year/time treated as a
+   single composition, never positioned independently of each other),
+   with a real, THREE-TIER hierarchy rather than "one big numeral, three
+   equally-small labels":
+
+     PRIMARY   the day numeral — a genuine embossed antique-gold HERO,
+               Fraunces (`--font-couple`, this project's identity
+               serif — the same face the couple names' union motif and
+               the countdown numerals share).
+     SECONDARY the month — Cormorant (`--font-engrave`), large and bold
+               enough to be a real second voice, not a tiny caption;
+               solid gold ink, no foil (the foil treatment is reserved
+               for the one hero element, so it stays special).
+     TERTIARY  weekday + year/time — Cormorant SC (`--font-invite-label`,
+               this project's supporting small-caps voice), sized to be
+               genuinely readable but in a warm neutral ink
+               (`--text-secondary`/`--text-tertiary`), NOT gold — this
+               is what actually creates hierarchy: three different tones
+               instead of the same gold repeated four times.
+
+   THE HERO NUMERAL's "engraved gold" treatment is built from THREE
+   layered techniques, not one gradient + one shadow:
+     1. a richer, higher-contrast vertical gradient fill (pale gold
+        highlight at the very top → a deep bronze floor), the metal's
+        own "catching the light" read;
+     2. a stepped `text-shadow` — several 1px-apart, progressively
+        deeper gold/bronze layers directly under the glyph — which is
+        what actually reads as EXTRUDED depth (a real bevel), not just a
+        gradient with a shadow behind it. `text-shadow` paints from the
+        glyph's own outline regardless of `color:transparent`, so it
+        keeps working alongside `background-clip:text`.
+     3. one soft, wide `filter: drop-shadow` for the ambient "resting on
+        the page" shadow, separating the whole numeral from the artwork
+        beneath it.
+   No backdrop-filter, no glow, no outline, no real 3-D transform —
+   still entirely 2-D paint, just more of it, in the direction of an
+   actual engraved medallion rather than flat gradient text. */
+const HERO_GOLD_FILL =
+  "linear-gradient(180deg, #fbeec3 0%, #eecf8e 20%, #cda158 44%, #a67c3a 68%, #8a642e 88%, #a2793a 100%)";
+const HERO_GOLD_EXTRUDE =
+  "0 1px 0 #e2bd7c, 0 2px 0 #d3aa66, 0 3px 0 #c39751, 0 4px 0 #b3843d, 0 5px 2px rgba(60,40,12,0.45)";
+const HERO_GOLD_AMBIENT = "drop-shadow(0 10px 16px rgba(46,30,10,0.32))";
+
 function DateFace({
   day,
   month,
@@ -398,14 +498,17 @@ function DateFace({
   weekday: string;
   time?: string;
 }) {
-  const legible = "0 1px 2px rgba(38,26,14,0.22)";
-  const label: React.CSSProperties = {
+  const legible = "0 1px 2px rgba(38,26,14,0.2)";
+  // TERTIARY tier — weekday + year/time: a warm neutral ink, not gold,
+  // so the gold on the numeral (and, more plainly, the month) actually
+  // reads as a hierarchy rather than "everything is gold".
+  const tertiary: React.CSSProperties = {
     fontFamily: "var(--font-invite-label)",
     fontWeight: 500,
     color: "var(--text-secondary)",
-    fontSize: "clamp(11px,3.3vw,14px)",
-    letterSpacing: "0.32em",
-    marginLeft: "0.32em",
+    fontSize: "clamp(15px,4.1vw,19px)",
+    letterSpacing: "0.26em",
+    marginLeft: "0.26em",
     textTransform: "uppercase",
     textShadow: legible,
   };
@@ -414,48 +517,61 @@ function DateFace({
       className="flex flex-col items-center text-center"
       style={{ userSelect: "none", WebkitUserSelect: "none" }}
     >
-      <span style={label}>{weekday}</span>
+      <span style={tertiary}>{weekday}</span>
 
-      {/* the anchor — Fraunces, large but not oversized; special through
-          the letterforms and the space around it, not raw size. It reads
-          as the primary date anchor while SATURDAY / DECEMBER / year
-          hold a tight editorial lockup around it. */}
+      {/* PRIMARY — the hero numeral. See HERO_GOLD_* above for the
+          three-layer embossed-gold recipe. Margins pulled in TIGHT this
+          pass (was 2–6px / 3–7px): the previous, slightly looser spacing
+          let the whole lockup grow taller than the panel's own vertical
+          room on some viewports, pushing year/time down toward the
+          decorative border — the fix is tighter binding between tiers,
+          not a smaller numeral (the numeral is the one element
+          explicitly NOT to shrink). */}
       <span
         style={{
           fontFamily: "var(--font-couple)",
           fontOpticalSizing: "auto",
-          fontVariationSettings: '"opsz" 144, "SOFT" 50, "WONK" 1',
-          fontWeight: 500,
-          color: "var(--text-primary)",
-          fontSize: "clamp(96px,31vw,156px)",
+          fontVariationSettings: '"opsz" 144, "SOFT" 40, "WONK" 1',
+          fontWeight: 600,
+          fontSize: "clamp(92px,32vw,156px)",
           letterSpacing: "0.005em",
-          lineHeight: 0.86,
-          // tight within the numeral's own unit — weekday → 12 → month
+          lineHeight: 0.82,
+          // tight within the numeral's own unit — weekday → 4 → month
           // read as one composition, not three floating lines
-          margin: "clamp(1px,0.4vh,4px) 0 clamp(2px,0.6vh,6px)",
-          textShadow: "0 1px 3px rgba(38,26,14,0.26)",
+          margin: "clamp(0px,0.2vh,3px) 0 clamp(0px,0.2vh,3px)",
+          background: HERO_GOLD_FILL,
+          WebkitBackgroundClip: "text",
+          backgroundClip: "text",
+          color: "transparent",
+          textShadow: HERO_GOLD_EXTRUDE,
+          filter: HERO_GOLD_AMBIENT,
         }}
       >
         {day}
       </span>
 
-      {/* the month — tracked out to sit under the numeral edge to edge */}
+      {/* SECONDARY — the month: large and bold enough to be a real
+          second voice, solid gold ink (not the foil reserved for the
+          hero), tracked out to sit under the numeral edge to edge.
+          Tracking eased 0.2em → 0.15em — enough to still read as
+          engraved stationery without the word visually splitting apart
+          at this larger size. */}
       <span
         style={{
           fontFamily: "var(--font-engrave)",
-          fontWeight: 600,
-          color: "var(--gold-invite)",
-          fontSize: "clamp(17px,5.3vw,23px)",
-          letterSpacing: "0.4em",
-          marginLeft: "0.4em",
+          fontWeight: 700,
+          color: "var(--gold-invite-deep)",
+          fontSize: "clamp(24px,7vw,34px)",
+          letterSpacing: "0.15em",
+          marginLeft: "0.15em",
           textTransform: "uppercase",
-          textShadow: legible,
+          textShadow: "0 1px 0 rgba(255,250,236,0.4), 0 2px 4px rgba(60,42,16,0.22)",
         }}
       >
         {month}
       </span>
 
-      <span style={{ ...label, marginTop: "clamp(8px,1.8vh,12px)", fontSize: "clamp(11px,3.1vw,13.5px)", letterSpacing: "0.24em", marginLeft: "0.24em", color: "var(--text-tertiary)" }}>
+      <span style={{ ...tertiary, marginTop: "clamp(6px,1.2vh,10px)", color: "var(--text-tertiary)" }}>
         {year}{time ? ` · ${time}` : ""}
       </span>
     </div>
@@ -476,8 +592,6 @@ export default function DateReveal({
   const [phase, setPhase] = useState<Phase>(reduceMotion ? "settled" : "sealed");
   const [coverMounted, setCoverMounted] = useState(!reduceMotion);
   const [dismissCover, setDismissCover] = useState(false);
-  const [started, setStarted] = useState(false);
-  const [showAssist, setShowAssist] = useState(false);
   const [entered, setEntered] = useState(reduceMotion);
   const [bloom, setBloom] = useState(false); // brief warm light across the art
   const [sprinkle, setSprinkle] = useState(false); // brief celebratory particles
@@ -523,13 +637,6 @@ export default function DateReveal({
     return () => obs.disconnect();
   }, [entered]);
 
-  // a gentle assist if the guest hasn't started after a few seconds
-  useEffect(() => {
-    if (phase !== "sealed" || reduceMotion) return;
-    const t = setTimeout(() => setShowAssist(true), 5000);
-    return () => clearTimeout(t);
-  }, [phase, reduceMotion]);
-
   // one coordinated cinematic reveal — no state "cuts". Fired the instant
   // the scratch threshold is crossed, it runs IN PARALLEL with the cover
   // dissolving, never after it: the date settles in immediately, the warm
@@ -553,16 +660,17 @@ export default function DateReveal({
     bloomTimers.current.push(
       window.setTimeout(() => setBloom(false), 1700), // light begins to recede (2.2s gentle exit)
       window.setTimeout(() => goPhase("settled"), 2300), // countdown completes at full brightness
-      window.setTimeout(() => setSprinkle(false), 3000), // particles done, unmount
+      window.setTimeout(() => setSprinkle(false), 3300), // particles' own 3.2s fade has finished, unmount
     );
   }, [goPhase, reduceMotion]);
 
   /* the cover leaves the DOM only once it has fully dissolved */
   const handleCoverGone = useCallback(() => setCoverMounted(false), []);
 
+  // the silent fallback for browsers with no canvas support — dissolves
+  // the cover down the same path a scratch would, never cuts it away
   const forceReveal = useCallback(() => {
-    setStarted(true);
-    setDismissCover(true); // the assist dissolves the cover, it never cuts it
+    setDismissCover(true);
     beginReveal();
   }, [beginReveal]);
 
@@ -594,11 +702,14 @@ export default function DateReveal({
       className="relative w-full overflow-hidden"
       style={{ minHeight: "100dvh", isolation: "isolate" }}
     >
-      {/* THIS SCENE'S OWN BACKGROUND — the couple film's frozen final
-          frame, inside the section, so the whole Date scene (background +
-          scratch + date + countdown) scrolls away together as one unit.
-          Same 720×1280 art / `object-fit: cover` centring as the couple
-          film it continues from — visually seamless. */}
+      {/* THIS SCENE'S OWN BACKGROUND — the dedicated Save the Date
+          artwork (theme.assets.dateRevealPoster), inside the section, so
+          the whole Date scene (background + scratch + date + countdown)
+          scrolls away together as one unit. `object-fit: cover` height-
+          matches this 768×1376 portrait art on every phone, which is
+          what makes the dvh-based zone anchors below track the artwork's
+          own measured geometry correctly (see the LAYOUT notes above the
+          component). */}
       <img
         src={bgPoster}
         alt=""
@@ -607,15 +718,18 @@ export default function DateReveal({
         style={{ objectFit: "cover", objectPosition: "center", zIndex: 0 }}
       />
 
-      {/* only a barely-there warm wash over the arch's centre so the date
-          stays legible — no panel, no card, no gradient that changes the
-          painting. */}
+      {/* only a barely-there warm wash so the date and countdown stay
+          legible — no panel, no card, no gradient that changes the
+          painting. Centred a little lower than the viewport's own middle
+          (48% not 44%) so it sits over the ornate panel AND reaches down
+          toward the countdown band, rather than favouring the panel
+          alone. */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           zIndex: 1,
           background:
-            "radial-gradient(ellipse 82% 54% at 50% 44%, rgba(252,248,240,0.28) 0%, rgba(252,248,240,0.06) 60%, transparent 82%)",
+            "radial-gradient(ellipse 82% 60% at 50% 48%, rgba(252,248,240,0.24) 0%, rgba(252,248,240,0.05) 60%, transparent 82%)",
         }}
       />
 
@@ -631,7 +745,7 @@ export default function DateReveal({
           zIndex: 9,
           mixBlendMode: "screen",
           background:
-            "radial-gradient(ellipse 88% 58% at 50% 42%, rgba(255,239,209,0.34) 0%, rgba(255,232,196,0.10) 44%, transparent 74%)",
+            "radial-gradient(ellipse 88% 62% at 50% 46%, rgba(255,239,209,0.34) 0%, rgba(255,232,196,0.10) 44%, transparent 74%)",
           opacity: bloom ? 1 : 0,
           transform: bloom ? "scale(1.035)" : "scale(1)",
           transition: bloom
@@ -640,23 +754,33 @@ export default function DateReveal({
         }}
       />
 
-      {/* a few elegant celebratory flecks the moment the cover gives way —
-          gold and blush, short-lived, well clear of the date. Not confetti.
-          These are synced to the ACTUAL reveal (the threshold crossing),
-          never to the section loading. */}
-      <CelebrationParticles active={sprinkle && !reduceMotion} count={6} durationMs={2100} />
+      {/* THE CELEBRATION — a dense, two-sided burst of leaf/petal/
+          confetti pieces releasing from the TOP-LEFT and TOP-RIGHT
+          corners of the whole scene the instant the date is actually
+          revealed (synced to the real scratch threshold via `sprinkle`,
+          never to the section mounting or a timer). Positioned at the
+          SECTION level, not inside the small scratch/date box, so the
+          two bursts genuinely read as sweeping across the composition —
+          and BEHIND the date/countdown content (zIndex 7, one below
+          their own zIndex 8) so the pieces frame the reveal rather than
+          sit on top of and obscure it. This is the invitation's ONE
+          celebration system — it replaced two separate, much sparser
+          effects (an ambient sprinkle + a small radial burst) that were
+          really the same job done twice at too faint a scale. */}
+      <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 7 }}>
+        <CelebrationParticles active={sprinkle && !reduceMotion} count={64} durationMs={3200} />
+      </div>
 
-      {/* ── the arch's clear channel — clear of the lanterns above and
-          the domed pavilions below ── */}
+      {/* ── ZONE 1 — the ornate panel: scratch cover + revealed date ──
+          Positioned at the panel's own measured interior (DATE_STAGE_*),
+          not centred by maths and not sharing a flex group with the
+          countdown below — the two live in genuinely different regions
+          of the artwork, so they get independent anchors. */}
       <div
-        className="absolute inset-0 flex flex-col items-center"
+        className="absolute inset-x-0 flex flex-col items-center justify-center"
         style={{
-          justifyContent: "center",
-          // `dvh` — the section (and its poster background) is 100dvh, so
-          // the date holds its place in the painted arch's negative space
-          // whether or not the mobile browser chrome is showing.
-          paddingTop: "clamp(140px, 21dvh, 206px)",
-          paddingBottom: "clamp(74px, 15dvh, 146px)",
+          top: `${DATE_STAGE_TOP_DVH}dvh`,
+          bottom: `${DATE_STAGE_BOTTOM_DVH}dvh`,
           paddingLeft: "clamp(4px, 2vw, 14px)",
           paddingRight: "clamp(4px, 2vw, 14px)",
           zIndex: 8,
@@ -673,31 +797,37 @@ export default function DateReveal({
             laid directly over it (canvas carries the PNG's aspect
             ratio, so it scales without distortion). The date eases from a
             whisper of scale into place as the cover dissolves — the same
-            gesture, not a separate render. */}
+            gesture, not a separate render.
+
+            SIZE — FIXED a real overflow bug this pass, then sized up
+            another ~1.5× on top of the fix. The previous `min(48dvh,
+            400px)` had no VW term at all: a pure-dvh width overflows the
+            VIEWPORT'S OWN WIDTH whenever the dvh value exceeds
+            `100 × (viewport width / viewport height)` — on a typical
+            390×844 phone (aspect ≈0.462) that threshold is ≈46, so
+            `48dvh` was ALREADY silently overflowing ~15px past the
+            screen edge (clipped by this section's own `overflow:
+            hidden`, not visibly broken, but not the deliberate framed
+            placement it should have been either). `94vw` is now the
+            REAL governing term on every phone-shaped viewport — a
+            controlled, nearly edge-to-edge width with a small
+            intentional margin, replacing an accidental clip. `62dvh`
+            and `460px` stay only as ceilings for unusually wide/short
+            viewports (a tablet in landscape) where `vw` alone would
+            otherwise let it grow arbitrarily tall. The scratch canvas
+            itself needs no change for any of this: `ScratchCover`
+            measures its own parent's live `offsetWidth/Height` (via
+            `ResizeObserver`) and maps pointer coordinates through that
+            same live size, so it is inherently resolution-independent —
+            correct at any stage size automatically. */}
         <div
           className="relative flex items-center justify-center"
           style={{
-            width: "min(97vw, 460px)",
+            width: "min(94vw, 62dvh, 460px)",
             transform: sealed ? "scale(0.982) translateY(4px)" : "scale(1) translateY(0)",
             transition: reduceMotion ? "none" : "transform 1.3s cubic-bezier(0.16,1,0.3,1)",
           }}
         >
-          {/* THE CELEBRATION — a small burst of gold sparks out of the
-              date's own centre at the instant it is revealed. It sits
-              BEHIND the numerals (zIndex -1 inside this stage's own
-              stacking context, created by its transform), so the light
-              reads as coming from the date rather than being sprayed
-              over it. Vertical travel is compressed so the sparks stay in
-              the arch's channel and never reach the countdown. */}
-          <div style={{ position: "absolute", inset: 0, zIndex: -1 }}>
-            <CelebrationParticles
-              mode="burst"
-              active={sprinkle && !reduceMotion}
-              count={14}
-              durationMs={2200}
-            />
-          </div>
-
           <DateFace day={day} month={month} year={year} weekday={weekday} time={time} />
 
           {coverMounted && canScratch && (
@@ -709,94 +839,60 @@ export default function DateReveal({
                 aspectRatio: `${COVER_W} / ${COVER_H}`,
               }}
             >
+              {/* No instructional copy here by design — a painted gold
+                  scratch-off surface is its own affordance. The only
+                  fallback is silent: `!canScratch` (below) force-reveals
+                  immediately for browsers without canvas support, so no
+                  guest is ever actually stuck behind it. */}
               <ScratchCover
-                onFirstScratch={() => setStarted(true)}
                 onRevealStart={beginReveal}
                 onCoverGone={handleCoverGone}
                 dismiss={dismissCover}
                 reduceMotion={reduceMotion}
                 ariaLabel="Scratch the gold cover to reveal the wedding date"
               />
-              <span
-                style={{
-                  position: "absolute",
-                  left: 0,
-                  right: 0,
-                  bottom: "-10%",
-                  textAlign: "center",
-                  fontFamily: "var(--font-invite-label)",
-                  color: "var(--text-tertiary)",
-                  fontSize: "clamp(8px,2.2vw,10px)",
-                  letterSpacing: "0.4em",
-                  marginLeft: "0.4em",
-                  textTransform: "uppercase",
-                  opacity: started ? 0 : 0.82,
-                  transition: "opacity 0.5s ease",
-                  textShadow: "0 1px 8px rgba(250,244,234,0.6)",
-                  pointerEvents: "none",
-                }}
-              >
-                Scratch to reveal
-              </span>
-              {showAssist && !started && (
-                <button
-                  type="button"
-                  onClick={forceReveal}
-                  style={{
-                    position: "absolute",
-                    left: "50%",
-                    bottom: "-26%",
-                    transform: "translateX(-50%)",
-                    fontFamily: "var(--font-invite-label)",
-                    color: "var(--gold-invite)",
-                    fontSize: 10,
-                    letterSpacing: "0.2em",
-                    marginLeft: "0.2em",
-                    textTransform: "uppercase",
-                    background: "transparent",
-                    border: "none",
-                    borderBottom: "1px solid rgba(184,148,63,0.3)",
-                    paddingBottom: 2,
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  or tap to reveal
-                </button>
-              )}
             </div>
           )}
         </div>
+      </div>
 
-        {/* countdown — no rule, no box; a quiet band of type held a
-            generous gap below the date, subordinate to it.
+      {/* ── ZONE 2 — the quiet golden band: the countdown ─────────────
+          Its OWN anchor (COUNTDOWN_*), well clear of the panel above and
+          the diyas/urli bowls/flowers that start encroaching from the
+          sides toward the bottom of this band — never inside the scratch
+          panel, never over the decorative objects.
 
-            Its SPACE is reserved from the start: the countdown component
-            is mounted from the moment the section is live and simply
-            held at zero opacity, so the date never shifts up when the
-            numbers arrive (that layout jump was the visible "cut").
+          Its SPACE is reserved from the start: the countdown component
+          is mounted from the moment the section is live and simply held
+          at zero opacity, so nothing shifts when the numbers arrive (that
+          layout jump was the visible "cut").
 
-            And it emerges ACROSS the reveal rather than after it: already
-            half-lit while the cover dissolves, complete as the scene
-            settles. One interpolation of opacity + a whisper of scale and
-            travel — never a display swap, never a second entrance. */}
-        <div
-          className="flex flex-col items-center"
-          style={{
-            marginTop: "clamp(28px, 6.5dvh, 56px)",
-            opacity: settled ? 1 : revealed ? 0.45 : 0,
-            transform: settled
-              ? "translateY(0) scale(1)"
-              : revealed
-                ? "translateY(4px) scale(0.994)"
-                : "translateY(14px) scale(0.985)",
-            transition: reduceMotion
-              ? "none"
-              : "opacity 1.4s ease, transform 1.6s cubic-bezier(0.16,1,0.3,1)",
-          }}
-        >
-          <Countdown targetDate={weddingDate} visible={visible} />
-        </div>
+          And it emerges ACROSS the reveal rather than after it: already
+          half-lit while the cover dissolves, complete as the scene
+          settles. One interpolation of opacity + a whisper of scale and
+          travel — never a display swap, never a second entrance. */}
+      <div
+        className="absolute inset-x-0 flex flex-col items-center justify-center"
+        style={{
+          top: `${COUNTDOWN_TOP_DVH}dvh`,
+          bottom: `${COUNTDOWN_BOTTOM_DVH}dvh`,
+          paddingLeft: "clamp(8px, 3vw, 20px)",
+          paddingRight: "clamp(8px, 3vw, 20px)",
+          zIndex: 8,
+          userSelect: "none",
+          WebkitUserSelect: "none",
+          opacity: settled ? 1 : revealed ? 0.45 : 0,
+          transform: settled
+            ? "translateY(0) scale(1)"
+            : revealed
+              ? "translateY(4px) scale(0.994)"
+              : "translateY(14px) scale(0.985)",
+          transition: reduceMotion
+            ? "none"
+            : "opacity 1.4s ease, transform 1.6s cubic-bezier(0.16,1,0.3,1)",
+        }}
+      >
+        <Countdown targetDate={weddingDate} visible={visible} />
       </div>
 
       {/* the scroll invitation — the same chevron + SCROLL NOW mark the

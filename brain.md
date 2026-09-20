@@ -30,17 +30,37 @@ npm run preview  # vite preview
 
 ```
 COVER (cover.jpg, tap)
-  → GATE FILM (gate-cinematic.mp4, silent, ~10s)
-  → COUPLE INTRO (couple-background.mp4 = painted jharokha, plays ONCE, frozen ~20.6s)
-  → DATE REVEAL (couple-poster background + scratch cover → date + countdown)
+  → COUPLE INTRO — ONE continuous gate film (gate-cinematic.mp4, silent,
+    23.8s, plays ONCE, never looped/reset), this scene's ONLY background —
+    there is NO card/panel anywhere in this sequence (the old ivory
+    "Couple Card" CONTAINER was removed by explicit request; the CONTENT
+    it held — names, parent lines, wedding-hands — was NOT removed and is
+    composited directly onto the film; see CoupleIntro.tsx's header):
+      0–9s    envelope opening + Ganesha medallion, no overlay
+      9–12s   WELCOME TEXT reveals (in the illustrated couple's blank
+              sky): "With Joy In Our Hearts" / "We Welcome You" — a short
+              cinematic phrase, deliberately NEVER the couple's own names
+      12–14s  text fades out
+      14–17s  bare film (crossfade to the arched frame)
+      17–21s  COUPLE CONTENT reveals directly on the film, no box behind
+              it: bride name → her parent line → wedding-hands (the union,
+              between the two names) → groom name → his parent line —
+              same data/typography/order the old plaque held, just with
+              no container. Fully settled by ~21s, then holds unanimated.
+      ~23.8s  film ends (fades to white) → the golden scroll chevron
+  → DATE REVEAL (dateRevealPoster background + scratch cover → date + countdown)
   → EVENTS REEL (title page + one full-screen page per ceremony)
   → COUPLE PHOTOS (one complete full-screen SCENE per photograph, no carousel UI)
   → VENUE → RSVP → CLOSING
 ```
 
-All orchestrated in `src/pages/PublicInvitation.tsx` (stages: cover/video/card).
-The scroll document is a single div (display:none until tap) containing every
-section in order.
+All orchestrated in `src/pages/PublicInvitation.tsx` (`revealed`/`introDone`
+booleans, no more separate "video" stage — see `CoupleIntro.tsx` below for
+why). The scroll document is a single div, mounted and laid out from the
+first render (an opaque `Cover` overlay sits on top of it until the tap);
+`CoupleIntro`'s gate-film `<video>` lives inside that document from the
+start too, paused on its first frame, so the tap only calls `.play()` on
+it and fades the Cover away — the film is never swapped or remounted.
 
 ## The reel / scroll architecture (critical)
 
@@ -134,6 +154,20 @@ the card is behind it, not the video.
 - `src/data/invitation.ts` — types + default `invitation` object (couple
   names, wedding date, events[5], venue, rsvp, closing, music, settings).
   Events: mehendi, sangeet, haldi, wedding, reception (in that order).
+  **The wedding is 4 December 2026, 6:00 PM** (`wedding.date`/`.time`;
+  was 12 December 10:00 AM — a real, since-fixed bug: `getWeddingDate()`
+  used to HARDCODE `10, 0, 0` regardless of `wedding.time`, so the
+  displayed time string and the actual countdown target could silently
+  disagree; it now parses `wedding.time` for real via `parseTimeOfDay`).
+  `venue.date`/`.time` updated to match (a duplicate of the same fact in
+  a different object — the kind of "hidden old value" that's easy to
+  miss). The `events` array's OWN "wedding" entry was updated too;
+  mehendi/sangeet/haldi/reception were NOT (out of scope — nobody asked
+  for the other ceremonies moved, and guessing new dates for them would
+  be worse than leaving them alone), so haldi (still 2026-12-12) now
+  reads as happening 8 days AFTER the wedding — a pre-existing
+  placeholder-data inconsistency made newly visible, not something this
+  pass introduced or was asked to fix.
 - `src/data/store.ts` — `invitationStore` (get/set/patch/subscribe/reset),
   **persisted to localStorage key `neozy-invi:invitation-data`**; stored data
   is merged over defaults and WINS. ⚠️ Changing a default in invitation.ts
@@ -145,9 +179,15 @@ the card is behind it, not the video.
 - `src/data/themes.ts` — ThemeConfig (palette/fonts/assets/motifs/layout/
   paperWorld/ornamentation/motion); `getTheme(id)`, `useActiveTheme()`,
   `useThemeApplication()` sets CSS vars on document root. `ThemeAssets`
-  carries `wallpaperVideo`, `wallpaperPoster`, `eventBackgrounds`,
-  `venueImage`, `closingImage` AND `albumArt` — every image in the invitation
-  is theme-owned; no component hardcodes an image path.
+  carries `dateRevealPoster`, `eventBackgrounds`, `venueImage`,
+  `closingImage` AND `albumArt` — every image in the invitation is
+  theme-owned; no component hardcodes an image path. There is no
+  `wallpaperVideo`/`wallpaperPoster` any more: the Couple scene's
+  background is the gate film itself now, and there is no card layered
+  over it either (see "Guest journey" and `CoupleIntro.tsx` below). The
+  gate film's own path is a small hardcoded constant inside
+  `CoupleIntro.tsx` (matching how the old `OpeningVideo.tsx` — now
+  deleted — already hardcoded it, rather than a new theme field).
   `eventBackgrounds` is a `Record<string, EventWallpaper>` of ceremony MOTIF
   (`motifForEvent()`: mehendi / haldi / sangeet / wedding / reception) → that
   ceremony's ONE background painting, built from the `EVENT_BACKGROUNDS` map
@@ -164,132 +204,125 @@ the card is behind it, not the video.
   page with no code change.
   `venueImage` = the Venue page's painting (used when `venue.image` is unset;
   an uploaded venue photo always wins). `closingImage` = the closing page's
-  artwork. `albumArt` = the album's placeholder pages, ONE full-screen scene
-  each (see CouplePhotoExperience).
+  artwork. `albumArt` = the "Our Story" album's pages, ONE full-screen scene
+  each (see CouplePhotoExperience) — currently the five real couple
+  photographs (`couple1–5.jpg`), hand-ordered by visual/emotional ranking
+  (NOT filename): `couple4 → couple3 → couple1 → couple2 → couple5` (full
+  rationale in the `ThemeAssets.albumArt` doc comment in themes.ts).
+  `couple5.jpg` is deliberately last — it's a solo bridal portrait, the
+  groom isn't in frame at all, so it's the weakest fit for a COUPLE album
+  despite being a beautiful photo on its own. This list is only shown
+  while `invitation.gallery` is empty; an admin upload replaces it.
 - Admin: `/admin/*` routes edit the store (RequireAdmin). Admin pages don't
   matter for public changes.
 
 ## Component map
 
-- `CoupleIntro.tsx` — the couple scene. Deterministic rAF clock from a fixed
-  t0 (`CUE` timings; StrictMode-immune via `t0Ref`). **No Ganesha in this
-  scene** (removed deliberately; `ganesha.png` is still used elsewhere, see
-  Assets). **The foreground is a COUPLE PLAQUE** — a deliberate, explicit
-  exception to the "no cards" convention below, asked for by name for this
-  one scene: a warm ivory/champagne piece of stationery (`.paper-grain`
-  texture + a soft shadow + a 1px outer gold border + a 9px-inset gold
-  hairline, lifted from the same recipe as `RsvpSection.tsx`'s `Frame`)
-  holding the whole introduction, floating over the still-fully-visible
-  video.
-  **Shape (5th pass — a TRUE semicircular gumbad, not an ellipse-arc):**
-  the 4th pass's top used a small fixed `--arch-cap` (`36–50px`) as both
-  horizontal(50%)/vertical radius, which is a flattened ellipse-arc, not a
-  proper dome. Now `--dome-radius: calc(var(--plaque-w) / 2)` — EXACTLY
-  half the plaque's own width — is used as a SINGLE value (so horizontal
-  AND vertical radius are equal) on both top corners:
-  `borderTopLeftRadius`/`borderTopRightRadius: "var(--dome-radius)"`. Two
-  top corners each with horizontal radius = half-width meet exactly in the
-  middle (one unbroken arc); vertical radius = half-width too means the
-  dome's height equals its radius — the geometric definition of "upper
-  half of a circle". Bottom corners keep their own small, independent,
-  near-flat `--base-corner` (`clamp(8px,1.3dvh,12px)`, unchanged) plus the
-  small PEDESTAL BAR (`56%` width, vertical highlight→bronze gradient, its
-  own soft warm `boxShadow` — the ONLY deliberately-placed grounding
-  shadow in the composition) at `bottom: -4px`, unchanged from the 4th
-  pass. `--dome-radius` doubles as the plaque's own top padding.
-  **ONE continuous dimensional border wraps the WHOLE perimeter**
-  (previously only the pedestal read as "3-D"): two thin INSET
-  box-shadows — `inset 0 1px 0 rgba(255,252,244,0.55)` (light highlight,
-  upper inside edge) and `inset 0 -1px 0 rgba(120,92,45,0.22)` (warm
-  shadow, lower inside edge) — layered onto the existing outer ambient
-  `boxShadow`, under the 1px solid gold border (`rgba(184,148,63,0.3)`,
-  eased down slightly from `0.34` for restraint). Box-shadow always
-  respects border-radius, so this bevel travels around the dome's curve
-  exactly as it does the straight sides and flat base.
-  **7th pass removed the inner hairline entirely** (the second, concentric
-  gold line 9px inset) — named explicitly as part of a "box within box" /
-  competing-framing complaint. The outer border + the inset bevel above
-  already carry the "dimensional frame" job; a second line was pure
-  repetition. (This also removes a formula — `calc(var(--dome-radius) -
-  9px)` — that had been silently referencing the RETIRED `--arch-cap`
-  variable one pass prior; had that shipped, the undefined custom property
-  would have produced an invalid radius. Moot now that the element is gone.)
-  **Width:** `clamp(212px, 63vw, 266px)` (`--plaque-w`) — `63vw` keeps a
-  constant proportional side margin (~18.5vw per flank). Horizontal padding
-  `clamp(14px,4.5vw,22px)`.
-  **Position: `top: 50dvh`** (44 → 47 → 51 → 45 → 49.5 → 45 → **50dvh**
-  across eight passes). The 6th pass moved it to `49.5dvh` on a literal
-  "10% lower, verbatim" request and was flagged as a real overshoot past
-  the pavilion band on 360×640; the 7th pass reverted to `45dvh` because
-  that pass also added height (bigger hands, more parent-line spacing)
-  the `49.5dvh` budget had no room for. The 8th pass asked again, a
-  second time, for "10–15% lower, do not resize or touch internal
-  spacing" — explicitly ruling out the compensating trims used in earlier
-  passes — so `top` moved to `50dvh` (+11.1% from 45) with NOTHING else
-  in the file touched. **This is now flagged as a likely real overshoot
-  a second time, not silently absorbed**: with hands/spacing at their
-  current (larger, post-7th-pass) size, `50dvh` probably reproduces or
-  slightly worsens the same 360×640 bottom-pavilion collision `49.5dvh`
-  was reverted for. There is no remaining lever inside this file to fix
-  it without violating "do not resize the plaque" — if this is reported
-  as a real visual problem, the fix has to be a smaller downward shift, a
-  smaller plaque, or moving `ScrollCue` itself.
-  **Known thin spot, not visually verified:** at 360px width the parent
-  lines (now `clamp(13px,3.5vw,16px)`, tracking `0.13em` — see below) may
-  still not reliably fit on one line by hand-estimate and could wrap to 2
-  (`ParentLine` has never set `white-space: nowrap`, so this is a graceful
-  wrap, not clipping/an overflow bug) — if BOTH wrap simultaneously on the
-  shortest supported phone (360×640), clearance above the lantern/pavilion
-  bands drops to only a few px each side. Check this specific combination
-  by hand before shipping.
-  Names = Telma Bold via `--font-couple-custom`, `clamp(44px,6.4dvh,68px)`,
-  colour `--gold-invite-deep` (a new, deeper token added specifically for
-  this — see Typography system) — the card's richest gold tier, chosen for
-  contrast against the card's OWN ivory base (not the video, now that a
-  card sits between them). Per-letter type-on reveal unchanged (LetterName:
-  TOTAL 2500ms / PER_LETTER 560ms, stagger = (TOTAL−PER_LETTER)/(len−1)).
-  Parent lines = Cormorant SC, **refined this pass for presence**:
-  `clamp(12.5px,3.4vw,15.5px)` → `clamp(13px,3.5vw,16px)`, tracking `0.2em`
-  → `0.13em` (at a genuinely readable size, `0.2em` read as spaced-out
-  metadata rather than engraved stationery), line-height `1.4` → `1.55`,
-  `marginTop` `clamp(8px,1.8vh,15px)` → `clamp(10px,2vh,17px)` for more
-  separation from the name above. Still DELIBERATELY WITHOUT a flanking
-  hairline+diamond (see the comment above `ParentLine`) and still
-  explicitly NOT to be shrunk to buy vertical budget — it was flagged once
-  already as too small at the original `8.5–11px`.
-  Wedding-hands (`wedding-hands.png`, the original transparent handshake
-  artwork — the SAME FILE across every pass, never swapped, never
-  recoloured beyond a grounding drop-shadow) is now `clamp(62px,8dvh,78px)`
-  with `clamp(9px,1.8dvh,16px)` margin — nudged back UP this pass from
-  `56–74px` (it had been trimmed twice, purely to buy vertical budget for
-  the dome, past the point of reading as a meaningful symbolic element
-  rather than a small icon) so it reads as the connector between the two
-  names, not a second focal point; still grows from a single point to rest
-  via `EASE_ARRIVE`.
-  The `arrow` cue (22.2s, unchanged — still synced to the video's own
-  ≈20.6s settle) renders the shared `ScrollCue` (chevron + tracked wordmark,
-  currently "Begin Our Story"), positioned independently near the bottom of
-  the screen. Video paused at 20.6s
-  (watchdog), never reset, never replayed. Outside the card, the scene is
-  otherwise unadorned: just the original whisper top/bottom vignette and
-  the "settled" quiet radial vignette — no added colour grade or grain
-  layer over the video itself.
-  **`SoundToggle.tsx` and `FloatingContact.tsx`** (fixed-position global
-  chrome, gated by `showChrome = inCard && introDone` in
-  `PublicInvitation.tsx` — they mount at the EXACT moment `ScrollCue`
-  appears, i.e. `introDone` is set by `CoupleIntro`'s own `onComplete`)
-  were de-glassmorphed this pass: both used a `backdrop-blur-md` circular
-  glass-pill button, and `FloatingContact`'s expanded WhatsApp/Call actions
-  used coloured chip backgrounds (WhatsApp green, gold) with their own
-  `backdrop-blur` — all explicitly against this project's "no
-  cards/pills/glassmorphism" convention, and prominent enough to compete
-  with "Begin Our Story" at the one moment they share the screen. Now bare
-  icons/text (ivory, `filter: drop-shadow` for legibility over any
-  artwork — the same technique `ScrollCue` already used), no background,
-  no border, no blur. Functionality/positioning/wiring untouched.
-  THE WHOLE FOREGROUND IS ONE PROPORTIONAL dvh SYSTEM — scene is 100dvh and
-  the art is height-matched, so dvh fractions track painted-feature rows on
-  every phone.
+- `CoupleIntro.tsx` — the couple scene. Currentime-driven clock off the
+  gate film's own `currentTime`/`ended` (`CUE`, in SECONDS of film time —
+  see its own header for the measured phases). **There is no Couple
+  Card CONTAINER any more** — the old ivory/champagne gumbad-domed
+  plaque (border, halo, pedestal, background fill) was REMOVED
+  COMPLETELY by explicit request. **The CONTENT it held was NOT
+  removed**: bride name, her parent line, the wedding-hands mark, the
+  groom name, his parent line — all still render, same data bindings
+  (`couple.name1/name2/brideParents/groomParents`), same order, same
+  fonts, same relative hierarchy — now simply composited directly onto
+  the still-fully-visible film with no box behind them. An earlier pass
+  of this same correction over-read "remove the card" as "remove
+  everything the card held" and deleted the names/parent lines, leaving
+  only the hands mark floating alone — that was wrong and has been
+  reverted; `NameBlock`/`LetterName`/`ParentLine` are back, adapted only
+  where the loss of the plaque's own paper genuinely required it (see
+  below), never redesigned. **No Ganesha in this scene** (removed
+  separately, earlier; `ganesha.png` is still used elsewhere, see Assets).
+  What the film now carries, in order:
+  - **THE WELCOME TEXT** (9–12s in, 12–14s out, in the illustrated
+    couple's blank sky) is a SEPARATE, SHORTER moment that comes FIRST,
+    NEVER the couple's own names (a wrong pass once put `couple.name2 &
+    couple.name1` here — reverted). THREE tiers now, not one flat line
+    (a later correction: the previous single hero line, "We Welcome
+    You", never actually said the word "wedding"): "With Joy In Our
+    Hearts" (tiny, `--gold-invite-dim`) → "Welcome To Our" (a notch
+    larger, `--gold-invite`) → **"WEDDING"** (the hero word, largest,
+    the dimensional gold-foil treatment — a vertical light→dark gold
+    `background`/`backgroundClip:"text"` fill plus three stacked
+    `filter: drop-shadow(...)` layers). Hard-confined to a 20dvh band
+    (30–50dvh, `overflow:hidden`) — never outside it, regardless of
+    tier count.
+  - **THE COUPLE CONTENT** (17.5s bride name → 18.25s her parent line →
+    18.75s wedding-hands → 19.5s groom name → 20.25s his parent line,
+    fully settled ≈21s, then holds unanimated to the film's end) — the
+    exact `GUNJAN / D/O MR. & MRS. VERMA / [hands] / ABHAY / S/O MR. &
+    MRS. CHAUDHARY` composition, positioned as one group at `top: 43dvh`
+    (the same optical centre the plaque used to occupy — the film's
+    arch's own clear interior, ≈15–70% frame height). `LetterName` (the
+    names) now uses the SAME dimensional gold-foil recipe as the welcome
+    text and the Countdown numerals, because the old solid
+    `--gold-invite-deep` ink was tuned for contrast against the plaque's
+    OWN ivory paper, which no longer exists — set directly on the film,
+    it read too flat without the foil's own built-in shadow/depth.
+    `ParentLine` keeps a plain solid `--gold-invite-dim` ink (unchanged
+    tier below the names) with a shadow rebuilt for the film's pale
+    tones instead of the old ivory paper.
+    ⚠️ **Gold-foil text bug, fixed**: `background-clip:"text"` MUST be
+    applied to the LEAF element that actually contains the text, never
+    to an ancestor that wraps animated children. `LetterName`'s
+    per-letter reveal originally put the gradient/clip/`filter:drop-
+    shadow` on the OUTER wrapping `<span>` and only `opacity`/`filter:
+    blur` on each per-letter child; browsers appear to composite a
+    child carrying its own `filter` as a separate layer, which broke the
+    ancestor's text-shaped gradient mask — the names rendered fully
+    invisible (`color:transparent` with no gradient successfully
+    painted through) while `ParentLine` (a plain solid colour, no
+    gradient/clip) stayed visible right next to them. Fixed by moving
+    `NAME_GRADIENT`/`NAME_DROP_SHADOW` onto EACH per-letter `<span>`
+    individually. `DateFace`'s and `Countdown`'s gold-foil numerals never
+    had this bug because they are single plain-text spans with no
+    animated children of their own. The wedding-hands mark
+    (`wedding-hands.png`) has been enlarged THREE TIMES since the plaque
+    came out — `clamp(62px,8dvh,78px)` → `clamp(72px,9.5dvh,92px)` →
+    `clamp(84px,11dvh,108px)` → now `clamp(101px,13.2dvh,130px)` (this
+    last one an explicit "~20% from its CURRENT size, not the original"
+    ask — 84×1.2≈101, 108×1.2≈130) — and the names (`LetterName`) once
+    more too, `clamp(44px,6.4dvh,68px)` → `clamp(52px,7.4dvh,80px)`, per
+    an explicit "one of the strongest voices in the scene" brief. Same
+    `EASE_ARRIVE` scale-from-a-point reveal on the hands, same file,
+    never recoloured beyond its grounding drop-shadow. The same
+    `GOLD_FOIL_FILL`/`GOLD_FOIL_SHADOW`-shaped recipe (values duplicated
+    per file, not shared via import) also appears in `DateReveal.tsx`'s
+    date numeral, so the opening film's title/couple-name text and the
+    revealed date read as one gold vocabulary. (`Countdown.tsx`'s
+    numerals moved OFF this recipe in a later pass — see its own entry
+    below — once white 3-D boxes made a gold-on-ivory numeral read as
+    low-contrast; they keep the same antique-gold LANGUAGE in their
+    labels and box border instead.)
+  - **THE ARROW** — its cue is not a fixed time offset at all: it fires
+    the instant DISPLAYED playback actually stops, which is now
+    `EARLY_STOP_SECONDS` (1s) before the film's own real end, read live
+    off `v.duration` inside the same `timeupdate` watchdog that drives
+    `CUE` — the file itself is never cropped/trimmed/re-encoded, only
+    the held frame is a beat earlier than the true last frame. `ended`
+    stays wired as a safety net for the rare case `duration` isn't a
+    finite number yet. A very subtle, uniform dim (`rgba(10,8,7,0.22)`,
+    zIndex 20, fades in over 0.9s on the same `arrow` cue) lowers the
+    held final frame just enough for the chevron to read clearly — NOT
+    a blackout, NOT a card/replacement background, still the film's own
+    last frame underneath. The chevron's own opacity transition carries
+    a `0.3s` delay so it visibly follows the dim rather than arriving
+    with it.
+  Outside the welcome text and the couple content, the scene is
+  otherwise unadorned: just the original whisper top/bottom vignette
+  plus the dim above. The OLD "settled" quiet radial vignette that used
+  to darken the scene for the CARD's final hold stays gone (it existed
+  to quiet the card's own composition; with no card, it had nothing
+  left to do) — the couple content simply holds, unanimated, from ~21s
+  (≈2s before the film's new effective end) until playback stops, per
+  the explicit "do not animate it away, do not start another transition"
+  instruction.
+  `SoundToggle.tsx`/`FloatingContact.tsx` are unaffected by this pass —
+  still gated by `showChrome = revealed && introDone` in
+  `PublicInvitation.tsx`, still de-glassmorphed (bare icons, no pill/blur).
 - `DateReveal.tsx` — scratch cover (canvas, painted gold PNG
   public/themes/theme-1/images/scratch.png, `destination-out` erasing, ~50% of originally
   opaque alpha must be erased; phases sealed → revealed → settled). The
@@ -303,13 +336,18 @@ the card is behind it, not the video.
   where it touches. The rock PAUSES (holds, never snaps) while a stroke is
   live and while the cover dissolves. Cover fitting also uses
   `offsetWidth/Height`, not the bounding box (a rotated box's AABB is
-  larger than the box). The cover dissolves over `FADE_MS` (900ms) and is only UNMOUNTED
-  after that (assist path included), so nothing is cut out mid-frame.
+  larger than the box). The cover dissolves over `FADE_MS` (900ms) and is
+  only UNMOUNTED after that, so nothing is cut out mid-frame. **There is
+  NO instructional copy anywhere on this cover** ("Scratch to reveal" and
+  the "or tap to reveal" assist button were both removed by explicit
+  request) — the painted gold scratch-off surface is left to explain
+  itself; the ONLY fallback is a silent one (`!canScratch` force-reveals
+  immediately for browsers without canvas support, no visible cue).
   `revealed` fires the instant the threshold is crossed — the date settles
   immediately, in parallel with the dissolve. Reveal = warm bloom
-  (mix-blend screen, exits over 2.2s starting 1.7s) + the celebration (6
-  drifting flecks + a 14-spark `CelebrationParticles mode="burst"` behind
-  the date) at the reveal moment; countdown settles at 2.3s at FULL
+  (mix-blend screen, exits over 2.2s starting 1.7s) + the two-sided
+  corner celebration (see `CelebrationParticles.tsx` below) at the
+  reveal moment; countdown settles at 2.3s at FULL
   brightness (no dimming layer exists — don't add one). The countdown is
   MOUNTED from the start so its space is reserved (no layout jump) and
   interpolates opacity 0 → 0.45 → 1 across revealed → settled. The SCROLL
@@ -317,8 +355,115 @@ the card is behind it, not the video.
   owns the gesture). Callbacks passed into `ScratchCover` must stay
   identity-stable — its paint effect would otherwise re-run and wipe the
   guest's scratching.
-- `Countdown.tsx` — Fraunces numerals `clamp(28px,8.4vw,38px)` +
-  Cormorant SC labels; "Until We Celebrate" label; same footprint rules.
+  **Background & layout — the artwork has now been replaced MULTIPLE
+  times**, each with a genuinely different composition and even
+  different pixel dimensions; every LAYOUT number in this file must be
+  re-derived from the CURRENT file each time, never assumed stable.
+  Current file: `theme.assets.dateRevealPoster` → `savethedate.jpg`,
+  **784×1373** (was 768×1376 two passes ago — the aspect ratio itself
+  moved, 0.558 → 0.571), a monochrome antique-cream/rose-gold palette
+  (the earlier distinct pink/sage colour-blocked version is gone). "SAVE
+  THE DATE" is lettered into the art up top (≈0–22% — the section adds
+  NO heading of its own), then a stack of nested scalloped frames
+  ≈23–68%, then a large OPEN cream field ≈68–90% (lotus-flower
+  illustrations confined to the bottom corners only) before the very
+  bottom mandala emblem. `DATE_STAGE_TOP/BOTTOM_DVH` and
+  `COUNTDOWN_TOP/BOTTOM_DVH` at the top of the file encode the CURRENT
+  measured zones — see that comment block for the full breakdown; don't
+  trust the specific percentages here once the artwork changes again.
+  **Scratch/date stage size, now FOUR sizing passes deep**: pass 1 sized
+  the stage to the innermost ivory panel's own interior; pass 2 ("make it
+  ~2× larger") sized it to a second, larger frame layer; pass 3 sized it
+  to (just inside) the artwork's OUTER frame boundary — `min(48dvh,
+  400px)`, dvh-based (not vw) because `object-fit:cover` only guarantees
+  the HEIGHT axis maps 1:1 to dvh.
+  ⚠️ **Pass 3's dvh-only width had a real overflow bug, fixed in pass 4**:
+  a pure-dvh width overflows the viewport's own WIDTH whenever the dvh
+  value exceeds `100 × (viewport width / viewport height)` — on a
+  typical 390×844 phone (aspect ≈0.462) that threshold is ≈46, so
+  `48dvh` was already silently overflowing ~15px past the screen edge
+  (clipped by the section's own `overflow:hidden`, not visibly broken,
+  but an accident, not a deliberate framed placement). Pass 4 is `min(
+  94vw, 62dvh, 460px)` — `94vw` is now the REAL governing term on every
+  phone-shaped viewport (a controlled, ~edge-to-edge width with a small
+  intentional margin); `62dvh`/`460px` remain only as ceilings for
+  unusually wide/short viewports. General rule for next time: a WIDTH
+  that must respect the viewport's own bounds always needs a `vw` (or
+  `px`) term in the `min()`, even when a `dvh` term is also needed to
+  track a cover-fit image's proportions — dvh alone is only safe when
+  its value is known to stay below `100 × aspectRatio` for every
+  supported device, which is easy to violate by accident. The scratch
+  canvas needs NO internal change across any of these resizes:
+  `ScratchCover` measures its own parent's live `offsetWidth/Height` via
+  `ResizeObserver` and maps pointer coordinates through that same live
+  size, so it is inherently resolution-independent.
+  **Idle rock, fixed to stay stopped**: `ScratchCover` now tracks
+  `everScratched` (state, not a ref — a ref was tried first and correctly
+  flagged by lint as "accessed during render") and pauses `scratchRock`
+  permanently once the guest's FIRST touch lands, rather than resuming
+  between individual strokes as it did before — the idle wobble's job is
+  inviting the first touch, not accompanying every one after it.
+  **`DateFace` was fully redesigned this pass, not just enlarged again**
+  — a real THREE-TIER hierarchy instead of "one big numeral, three
+  equally-small labels": PRIMARY the day numeral (Fraunces,
+  `--font-couple`), SECONDARY the month (Cormorant, `--font-engrave`,
+  solid `--gold-invite-deep`, no foil), TERTIARY weekday + year/time
+  (Cormorant SC, `--font-invite-label`, a warm NEUTRAL ink —
+  `--text-secondary`/`--text-tertiary`, deliberately NOT gold, which is
+  what actually creates the hierarchy instead of four gold elements at
+  different sizes). The numeral's "engraved gold" is THREE layered
+  techniques, not one gradient + one shadow (`HERO_GOLD_FILL` /
+  `HERO_GOLD_EXTRUDE` / `HERO_GOLD_AMBIENT`): a richer, higher-contrast
+  gradient fill; a STEPPED `text-shadow` (several 1px-apart,
+  progressively deeper gold/bronze layers) that reads as real extruded
+  depth — `text-shadow` paints from the glyph's own outline regardless
+  of `color:transparent`, so it keeps working alongside
+  `background-clip:text`, which a single `filter:drop-shadow` alone
+  cannot fake; and one soft, wide `filter:drop-shadow` for the ambient
+  "resting on the page" shadow. Still entirely 2-D paint — no
+  backdrop-filter, no glow, no real 3-D transform. Numeral now
+  92–156px (was 76–128px); month 24–34px (was 16–22px, and switched
+  from the tracked ALL-CAPS `--gold-invite` treatment to a bolder solid
+  `--gold-invite-deep`); weekday/year 15–19px (was 13–17px, and switched
+  ink family from gold to neutral, per the hierarchy change above).
+  **Spacing tightened in the very next pass**: the numeral's own margins
+  (2–6px/3–7px → 0–3px/0–3px) and the year/time line's `marginTop`
+  (8–13px → 6–10px) both shrank — NOT the numeral itself, which is the
+  one element explicitly protected from shrinking — because the
+  slightly looser spacing let the whole lockup grow taller than the
+  panel's own vertical room on some viewports, pushing year/time down
+  toward the decorative border. Month tracking also eased 0.2em → 0.15em
+  (still reads as engraved stationery, less visual gap at the larger
+  size). General lesson: when a multi-tier composition is too tall for
+  its panel, tighten the GAPS between tiers before ever shrinking the
+  hero/anchor element.
+- `Countdown.tsx` — REDESIGNED into four premium white/ivory 3-D BOXES
+  (`BOX_STYLE`), one per unit, replacing a plain-text-on-artwork layout
+  that read as "merging into the background" once the surrounding
+  artwork got busier. A deliberate, explicitly-requested, NAMED exception
+  to the project's "no cards" convention — same standing as the Couple
+  scene's own past exceptions. Each box: a warm ivory gradient surface
+  (never flat white, never glassmorphism/backdrop-filter), a hairline
+  antique-gold border, and layered shadows for the dimensional "raised
+  stationery" read (inset highlight along the top edge, inset shadow
+  along the bottom edge, a close warm outer drop shadow lifting it off
+  the artwork) — no heavy dark UI shadow, no glow. The numerals moved
+  OFF the gold-foil treatment used everywhere else in this sequence:
+  gold-on-ivory read as low-contrast inside a white box, so numerals are
+  now dark charcoal (`#241f18`) — genuinely readable — with the antique-
+  gold touch carried only in the `textShadow` beneath the glyph (a warm
+  highlight above, a soft gold-tinted shadow below), never in the glyph's
+  own colour. The old hairline dividers between units are gone — the
+  boxes themselves are now the separators.
+  **Enlarged again this pass**, per an explicit "the DAYS/HOURS/MINUTES/
+  SECONDS labels are still too small" correction: numerals 26–36px →
+  32–46px, labels **8–9.5px → 12–15px** (the labels specifically had
+  stayed tiny even as the numerals grew in the redesign pass), box
+  `minWidth` 56–82px → 64–96px, to fill the artwork's own much larger
+  open lower field (see `DateReveal.tsx`'s LAYOUT note — the countdown's
+  stage grew from ≈15dvh to ≈19dvh). "Until We Celebrate" also enlarged
+  (10–12px → 13–16px) — still clearly secondary to the date, but no
+  longer near-illegible.
 - `EventsSection.tsx` — full-screen reel: `TitleScene` + one `EventScene` per
   ceremony (100dvh sections, `data-reel-scene`). Each ceremony page carries
   ITS OWN artwork as the scene's back layer through `EventBackdrop`, from
@@ -398,8 +543,10 @@ the card is behind it, not the video.
   EventEmblem (mehendi/haldi/sangeet/wedding/reception/blessing/lotus),
   `motifForEvent(e)`, JharokhaArch, AmbientParticles. Reuse these — do not
   invent new decoration.
-- `VideoBackground.tsx`, `OpeningVideo.tsx`, `Cover.tsx`, `SoundToggle.tsx`,
-  `FloatingContact.tsx` — supporting pieces.
+- `VideoBackground.tsx`, `Cover.tsx`, `SoundToggle.tsx`,
+  `FloatingContact.tsx` — supporting pieces. (`OpeningVideo.tsx` is gone —
+  its one job, rendering the gate film, is now `CoupleIntro.tsx`'s own
+  background; see "Guest journey" above.)
 - `ScrollCue.tsx` — the one scroll invitation: a thin-line downward arrow
   with a tracked SCROLL NOW wordmark beneath it, floating on a pool of warm
   light. Luminous treatment (the cue must be found at a glance over a
@@ -417,22 +564,79 @@ the card is behind it, not the video.
   old bare chevron pulsed with the retired `scrollBounce`, whose 0.28
   opacity floor made a thin gold stroke read as "not there" over the
   artwork's dark lower band.)
-- `CelebrationParticles.tsx` — two modes, one system: `"fall"` (the original
-  drifting petals) and `"burst"` (gold sparks radiating from the centre, for
-  the date reveal; `celebrationBurst` keyframes live in index.css).
+- `CelebrationParticles.tsx` — REDESIGNED into ONE system (no `mode` prop
+  any more — the old `"fall"`/`"burst"` modes, and their
+  `celebrationFall`/`celebrationBurst` keyframes in index.css, are gone;
+  nothing else used this component, so removing them was a clean
+  deletion, not a breaking change). Fires a DENSE two-sided burst — ~32
+  leaf/petal/confetti/dot pieces PER SIDE (64 total by default),
+  releasing from the section's own TOP-LEFT and TOP-RIGHT corners and
+  sweeping down/inward — replacing what used to be two much sparser,
+  separate effects (a 6-piece ambient sprinkle + a 14-spark radial burst
+  from the date's own centre) that read as too faint against the
+  artwork. Palette is a restrained wedding set (antique gold, champagne,
+  muted rose, blush, ivory, terracotta, muted red) — explicitly NOT the
+  saturated/neon range. One shared `celebrationConfetti` keyframe (index.
+  css) drives every piece via `--conf-dx/--conf-dy/--conf-rot-from/
+  --conf-rot-to` custom properties, each piece randomised in shape,
+  colour, size, angle, distance, rotation, delay and duration so the
+  burst reads as organic, never uniform. Mounted in `DateReveal.tsx` at
+  the SECTION level (not inside the small scratch/date box) so the two
+  bursts genuinely sweep across the whole composition, at `zIndex: 7` —
+  ONE below the date/countdown content's own `zIndex: 8` — so the pieces
+  frame the reveal rather than sit on top of and obscure the numerals.
+  Triggered by the exact same `sprinkle` state as before (set by
+  `beginReveal()`, itself only called from the scratch cover's real
+  threshold-crossing) — the TRIGGER was already correct; only what
+  renders on it changed. Unmount timeout bumped 3000ms → 3300ms to
+  clear the new animation's own 3.2s duration instead of cutting it off
+  ~200ms early.
 
 ## Artwork geometry facts (measured, trust these)
 
-- `couple-poster.jpg` / `couple-background.mp4`: 720×1280, painted jharokha — blue
-  watercolor outside, cream arch channel in the center, lanterns, peacocks,
-  pavilions at the bottom.
-- Under `object-fit: cover` on any portrait phone the art is height-matched
+- `couple-poster.jpg`: 720×1280, painted jharokha — blue watercolor outside,
+  cream arch channel in the center, lanterns, peacocks, pavilions at the
+  bottom. This was the Couple Card's video poster and the old
+  `couple-background.mp4`'s own artwork (both retired — see "Guest journey"
+  above); `themes.ts` still points `venueImage` at this file. ⚠️ The file is
+  currently MISSING from `public/themes/theme-1/images/` (deleted outside
+  of this change, pre-existing, not something this pass touched) — the
+  Venue page's fallback artwork is broken until either the file is restored
+  or `venueImage` is repointed.
+- Under `object-fit: cover` on any portrait phone that art is height-matched
   (scale ≈ 0.658): a painted feature lands at the SAME viewport pixel row on
   every device (img_y = vp_y / 0.658).
 - Lanterns bottom out at ≈ **113px** from the viewport top; the clear cream
   arch channel runs ≈ 120px → ~640px; pavilions own everything below.
 - Ganesha's PNG (394×441) has almost no transparent padding — box ≈ figure.
 - Poster mean luminance ≈ 206 (bright) — legibility washes, not dimmers.
+
+### Gate film geometry (gate-cinematic.mp4, 1080×1920, 25fps, 23.8s —
+### measured by extracting real frames with PyAV; trust these)
+
+CoupleIntro's whole foreground sequence (`CUE` in that file) is built from
+these measured phases, not a guess from watching the file at a glance:
+
+- **0–~8s**: an opening iris (white circle growing from centre) into a
+  static pink Ganesha "OM" calligraphy medallion framed by watercolor
+  peonies, then a whiteout transition.
+- **~9–~13s**: an illustrated cartoon couple in traditional dress, in the
+  LOWER half of frame (heads start ≈43–45% of frame height, feet ≈78%),
+  leaving a genuinely blank sky above them from ≈17% to ≈43% of height —
+  stable/unchanging across this whole window, THEN crossfading to white.
+  This blank sky is the WELCOME TEXT's stage; the text is kept inside
+  30–50dvh (per the invitation spec) but biased to the TOP of that band
+  (padding-top only, not centred) to clear the couple's heads at ≈43%.
+- **~13–17s**: crossfade (whiteout) from the illustrated couple to —
+- **~17–~23.8s**: an empty arched oval outline (thin pink line, floral
+  wreath concentrated at its base), interior ≈15%–70% of frame height,
+  COMPLETELY BLANK inside, centre ≈42.7% — held static (only a subtle
+  warm/golden colour-grade shift near the very end) all the way to the
+  film's own end. This is the Couple Plaque's stage — see the `top: 43dvh`
+  note beside the plaque's container in `CoupleIntro.tsx`.
+- The film ends in a genuine fade-to-white (already ≈90% faded by 23.6s) —
+  there is no jarring cut, which is why the scroll chevron is cued off the
+  `ended` event rather than a guessed second.
 
 ## Conventions
 
@@ -451,12 +655,15 @@ the card is behind it, not the video.
   type. NO cards/pills/glassmorphism/gradients-as-decoration/SaaS chrome.
   No new fonts without checking the established set. No new assets unless
   genuinely needed and style-matched.
-  **Named exception: the CoupleIntro couple card** — explicitly requested
-  by name, modelled on the SAME card recipe already used elsewhere
-  (`.paper-grain`, the `Frame` pattern in `RsvpSection.tsx`: warm ivory
-  gradient, soft two-layer shadow, hairline border, `ThemeCorner` florets,
-  `borderRadius: 2`). Not a precedent for adding cards elsewhere — the rest
-  of the cinematic reel stays card-free.
+  The CoupleIntro scene's own exception (a named, explicitly-requested
+  "Couple Card" plaque) was removed completely by later explicit request
+  — see "Guest journey" and `CoupleIntro.tsx` in the Component map; the
+  whole cinematic reel (the couple/date/celebrations/events/album reel)
+  stays card-free. There IS one current exception, in the paper Save the
+  Date section rather than the cinematic reel: `Countdown.tsx`'s four
+  white/ivory 3-D boxes — explicitly requested by name, to fix the
+  countdown "merging into the background". Not a precedent for adding
+  cards elsewhere.
 
 ## Assets (public/)
 
@@ -464,9 +671,18 @@ All Theme 1 media lives under `public/themes/theme-1/` (images/, videos/,
   audio/, fonts/) — a future Theme 2 adds its own parallel folder; app/system
   assets (favicon.svg) stay at public/ root.
 
-- `themes/theme-1/videos/couple-background.mp4` (portrait film),
-  `themes/theme-1/videos/gate-cinematic.mp4`,
-  `themes/theme-1/images/couple-poster.jpg`, `themes/theme-1/images/cover.jpg`,
+- `themes/theme-1/videos/gate-cinematic.mp4` (1080×1920, 23.8s — the ONLY
+  cinematic video now; see "Gate film geometry" above. `couple-background.mp4`
+  is deleted — it was the Couple Card's old, separate background video,
+  fully replaced by this file),
+  `themes/theme-1/images/couple-poster.jpg` (currently missing — see
+  "Artwork geometry facts" above), `themes/theme-1/images/cover.jpg`,
+  `themes/theme-1/images/savethedate.jpg` (784×1373 as of the current
+  upload — this file has been REPLACED multiple times with different
+  compositions AND different pixel dimensions, so treat any recorded
+  size here as a snapshot, not a guarantee; re-measure before trusting
+  it — the Date Reveal scene's own artwork, `ThemeAssets.dateRevealPoster`;
+  MUST stay lowercase, see DateReveal.tsx in the Component map),
   `themes/theme-1/images/ganesha.png`, `themes/theme-1/images/wedding-hands.png`,
   `themes/theme-1/images/scratch.png`, `themes/theme-1/audio/wedding-music.mp3`,
   `themes/theme-1/fonts/telma/Telma-Bold.woff2` (+ FFL.txt).
@@ -485,10 +701,12 @@ All Theme 1 media lives under `public/themes/theme-1/` (images/, videos/,
   page with no code change, PROVIDED the new artwork keeps a similar
   plaque-with-blank-panel composition in a similar place — the date/venue
   position is measured from the current photos, not computed generically.
-- Other theme artwork: `couple-poster.jpg` (720×1280 painted jharokha) serves
-  the Couple film poster, the Date Reveal background AND the Venue page
-  (`venueImage`); `cover.jpg` (1594×987 envelope art) serves the Cover gate,
-  the gate film's poster and the closing page (`closingImage`);
+- Other theme artwork: `couple-poster.jpg` (720×1280 painted jharokha,
+  currently missing on disk) is only `venueImage` now — Date Reveal moved to
+  its own `savethedate.jpg` and the Couple Card's video poster went away
+  with `couple-background.mp4`; `cover.jpg` (1594×987 envelope art) serves
+  the Cover gate, the gate film's poster (in `CoupleIntro.tsx`) and the
+  closing page (`closingImage`);
   `ganesha.png` (394×441) and `wedding-hands.png` (500×500) are transparent
   marks (both are also album placeholder pages) and `scratch.png` (1457×996,
   2.5MB) is the scratch cover. `albumArt` lists five files, one full-screen

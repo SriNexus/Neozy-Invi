@@ -65,12 +65,17 @@ export interface EventWallpaper {
 
 export interface ThemeAssets {
   /**
-   * The single persistent cinematic wallpaper that lives behind the
-   * Couple Card + Date Reveal experience only. Theme-owned, never
-   * hardcoded in a component.
+   * The Date Reveal scene's OWN background — a dedicated "Save the Date"
+   * composition (currently a layered scalloped-frame illustration with a
+   * blank ivory panel for the scratch/date, and a blank pink pedestal
+   * panel beneath it for the countdown), distinct from the Couple scene's
+   * gate-film background. `DateReveal.tsx` positions its scratch/date
+   * stage and its countdown against this specific image's measured
+   * geometry (see that file's header comment) — swapping this asset for
+   * one with a different
+   * composition would require re-measuring those positions.
    */
-  wallpaperVideo: string;
-  wallpaperPoster: string;
+  dateRevealPoster: string;
   /**
    * The Celebrations chapter's artwork, keyed by the ceremony's MOTIF
    * (`motifForEvent()` in decor/Ornaments): mehendi / haldi / sangeet /
@@ -90,11 +95,28 @@ export interface ThemeAssets {
    *  the book it opened. */
   closingImage: string;
   /**
-   * The album's PLACEHOLDER pages, shown in this order while the gallery is
-   * empty (uploaded photographs replace them automatically), so the album is
-   * always a real multi-photograph sequence instead of one framed artwork.
-   * ONE entry = ONE full-screen scene. Theme-owned, so no component
-   * hardcodes an image path.
+   * The album's pages, shown in this order while the couple hasn't
+   * uploaded their own gallery yet (`invitation.gallery` is empty by
+   * default — an admin upload replaces this list automatically, see
+   * CouplePhotoExperience.tsx). ONE entry = ONE full-screen scene.
+   * Theme-owned, so no component hardcodes an image path.
+   *
+   * Currently the five real couple photographs (`couple1–5.jpg`),
+   * ordered by hand after visually inspecting all five — NOT by
+   * filename number. Ranked on composition, both faces/figures genuinely
+   * visible, image quality, and emotional/storytelling value:
+   *   1. couple4.jpg — full traditional attire, henna-decorated hands
+   *      intertwined, tender forehead-touch, sharp focus, best overall.
+   *   2. couple3.jpg — genuine candid laughter, most emotionally
+   *      immediate moment of the five.
+   *   3. couple1.jpg — intimate golden-hour close-up, warm backlit glow.
+   *   4. couple2.jpg — elegant full-body rooftop portrait; strong on its
+   *      own, ranked here mainly because its pastel palette/mood reads
+   *      as a different shoot from the other four's traditional red/gold
+   *      wedding attire.
+   *   5. couple5.jpg — beautiful bridal portrait, but a SOLO shot (the
+   *      groom is not in frame at all, not merely cropped) — weakest fit
+   *      for a couple-photo album specifically, kept last.
    */
   albumArt: string[];
 }
@@ -180,11 +202,8 @@ const BASE: Pick<ThemeConfig, "fonts" | "assets" | "motifs" | "layout" | "paperW
   // can bring its own images/videos/audio/fonts without restructuring the
   // application. Every theme below currently shares this base set.
   assets: {
-    wallpaperVideo: "/themes/theme-1/videos/couple-background.mp4",
-    // A still of the couple film on its settled final frame (≈20s in) —
-    // so the fallback / pre-buffer frame is the same painted jharokha the
-    // film resolves to, never the gate envelope.
-    wallpaperPoster: "/themes/theme-1/images/couple-poster.jpg",
+    // The Date Reveal scene's own artwork — see the ThemeAssets doc above.
+    dateRevealPoster: "/themes/theme-1/images/savethedate.jpg",
     // The Celebrations chapter: ONE painting per ceremony, keyed by motif
     // (see EVENT_BACKGROUNDS). Replacing a file in
     // public/themes/theme-1/images/ updates that ceremony's page.
@@ -196,13 +215,14 @@ const BASE: Pick<ThemeConfig, "fonts" | "assets" | "motifs" | "layout" | "paperW
     // The closing page's artwork — the invitation's cover art, closing the
     // book it opened.
     closingImage: `${IMG}cover.jpg`,
-    // The album's placeholder plates, until real photographs are uploaded.
+    // The album's pages, until the couple uploads their own gallery — see
+    // the ThemeAssets.albumArt doc comment above for the ranking rationale.
     albumArt: [
-      `${IMG}couple-poster.jpg`,
-      `${IMG}cover.jpg`,
-      `${IMG}ganesha.png`,
-      `${IMG}wedding-hands.png`,
-      `${IMG}haldi.jpg`,
+      `${IMG}couple4.jpg`,
+      `${IMG}couple3.jpg`,
+      `${IMG}couple1.jpg`,
+      `${IMG}couple2.jpg`,
+      `${IMG}couple5.jpg`,
     ],
   },
   motifs: { corner: "floret", divider: "lotus", eventEmblems: "ceremony" },

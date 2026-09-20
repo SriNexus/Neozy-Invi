@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { Emblem } from "./decor/Ornaments";
 import { useActiveTheme } from "../data/useTheme";
 
@@ -31,6 +32,30 @@ function timeLeft(target: Date): { units: Unit[]; done: boolean } {
     ],
   };
 }
+
+/** THE BOX — a premium ivory/warm-white dimensional card, one per unit.
+ *  Explicitly requested: the countdown was reading as merging into the
+ *  artwork with no separation of its own; these boxes are the fix. A
+ *  deliberate, named exception to the project's "no cards" convention,
+ *  same standing as the Couple scene's own past exceptions — asked for
+ *  by name, for this one purpose.
+ *
+ *  Built to feel like a small piece of raised wedding stationery resting
+ *  ON the artwork, never a website card: a warm ivory gradient surface
+ *  (never flat white), a hairline antique-gold border, and layered
+ *  shadows doing the dimensional work — a soft inner highlight along the
+ *  top edge (light catching a raised surface), a soft inner shadow along
+ *  the bottom edge (the same edge's own shade), and a close, warm outer
+ *  drop shadow lifting the whole box off the background. No
+ *  backdrop-filter anywhere (that reads as glass, and this is paper/
+ *  card stock), no heavy dark UI shadow, no glow. */
+const BOX_STYLE: CSSProperties = {
+  background: "linear-gradient(160deg, #fffdf8 0%, #f6efe1 100%)",
+  border: "1px solid rgba(184,148,63,0.4)",
+  borderRadius: "clamp(10px, 1.8vw, 14px)",
+  boxShadow:
+    "inset 0 1px 0 rgba(255,255,255,0.85), inset 0 -2px 3px rgba(120,92,45,0.1), 0 2px 4px rgba(60,42,16,0.14), 0 10px 20px rgba(60,42,16,0.2)",
+};
 
 export default function Countdown({
   targetDate,
@@ -77,15 +102,15 @@ export default function Countdown({
   }
 
   return (
-    <div className="flex flex-col items-center" style={{ gap: "clamp(12px,2.6vh,18px)" }}>
+    <div className="flex flex-col items-center" style={{ gap: "clamp(12px,2.2vh,18px)" }}>
       <span
         style={{
           fontFamily: "var(--font-invite-label)",
           fontWeight: 500,
           color: "var(--gold-invite-dim)",
-          fontSize: "clamp(9px,2.4vw,10.5px)",
-          letterSpacing: "0.44em",
-          marginLeft: "0.44em",
+          fontSize: "clamp(13px,3.4vw,16px)",
+          letterSpacing: "0.36em",
+          marginLeft: "0.36em",
           textTransform: "uppercase",
           textShadow: "0 1px 10px rgba(250,244,234,0.5)",
         }}
@@ -93,30 +118,43 @@ export default function Countdown({
         Until We Celebrate
       </span>
 
-      {/* No cards, no boxes, no digital-clock styling. The figures are
-          set in the SAME identity serif as the date numeral above (the
-          calm, refined side of Fraunces — SOFT, no WONK), so the countdown
-          reads as printed on the same invitation as the date. Elegant
-          numerals carry the eye; the labels are a clear step quieter; the
-          gap between units breathes so the four figures read as
-          "99   10   08   48" rather than a squeezed digital readout.
-          Footprint stays within the same safe area as before. */}
-      <div className="flex items-start justify-center" style={{ gap: "clamp(18px,6vw,34px)" }}>
+      {/* Four premium white 3D boxes, clearly separated from the artwork
+          behind them (see BOX_STYLE above) — the fix for the countdown
+          "merging into the background". Numerals are dark charcoal (NOT
+          gold — gold-on-ivory read too low-contrast to be "very
+          readable") with a refined antique-gold TOUCH carried only in
+          the shadow beneath the glyph, so the dimensional warmth reads
+          without sacrificing legibility. Everything here grew again
+          this pass — numerals AND, per an explicit correction, the
+          DAYS/HOURS/MINUTES/SECONDS labels, which had stayed too small
+          even as the numerals grew — to fill the artwork's own much
+          larger open lower field (see DateReveal's LAYOUT note: the
+          countdown's stage is now a generous, unbroken ≈22dvh, not the
+          ≈15dvh a previous pass budgeted against the old artwork). */}
+      <div className="flex items-center justify-center" style={{ gap: "clamp(10px,2.8vw,18px)" }}>
         {state.units.map((u) => (
-          <div key={u.label} className="flex flex-col items-center" style={{ minWidth: "1.5em" }}>
+          <div
+            key={u.label}
+            className="flex flex-col items-center justify-center"
+            style={{
+              ...BOX_STYLE,
+              minWidth: "clamp(64px,17vw,96px)",
+              padding: "clamp(10px,1.8dvh,15px) clamp(6px,1.8vw,10px)",
+            }}
+          >
             <span
               style={{
                 fontFamily: "var(--font-couple)",
                 fontOpticalSizing: "auto",
-                fontVariationSettings: '"opsz" 72, "SOFT" 30, "WONK" 0',
-                color: "var(--text-primary)",
-                fontSize: "clamp(28px,8.4vw,38px)",
+                fontVariationSettings: '"opsz" 72, "SOFT" 20, "WONK" 0',
+                color: "#241f18",
+                fontSize: "clamp(32px,9vw,46px)",
                 lineHeight: 1,
-                fontWeight: 500,
+                fontWeight: 600,
                 letterSpacing: "0.01em",
                 fontVariantNumeric: "lining-nums tabular-nums",
                 textShadow:
-                  "0 1px 1px rgba(40,28,16,0.14), 0 1px 14px rgba(250,244,234,0.45)",
+                  "0 1px 0 rgba(255,252,240,0.75), 0 2px 5px rgba(139,111,50,0.3)",
               }}
             >
               {String(u.value).padStart(u.pad, "0")}
@@ -124,15 +162,13 @@ export default function Countdown({
             <span
               style={{
                 fontFamily: "var(--font-invite-label)",
-                fontWeight: 500,
-                marginTop: "clamp(8px,1.6vh,12px)",
-                color: "var(--text-tertiary)",
-                fontSize: "clamp(7px,1.9vw,9px)",
-                letterSpacing: "0.3em",
-                marginLeft: "0.3em",
+                fontWeight: 600,
+                marginTop: "clamp(4px,0.8vh,7px)",
+                color: "var(--gold-invite-dim)",
+                fontSize: "clamp(12px,3vw,15px)",
+                letterSpacing: "0.1em",
+                marginLeft: "0.1em",
                 textTransform: "uppercase",
-                opacity: 0.8,
-                textShadow: "0 1px 8px rgba(250,244,234,0.45)",
               }}
             >
               {u.label}

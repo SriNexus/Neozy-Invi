@@ -456,40 +456,32 @@ body {
 }
 
 /* ─── Celebration Particles ─── */
-@keyframes celebrationFall {
-  0% {
-    transform: translateY(-20px) translateX(0) rotate(0deg);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(100vh) translateX(var(--celeb-dx, 30px)) rotate(var(--celeb-rot, 360deg));
-    opacity: 0;
-  }
-}
-
 @keyframes celebrationFade {
   0% { opacity: 1; }
   80% { opacity: 1; }
   100% { opacity: 0; }
 }
 
-/* the date-reveal burst — a gold spark leaving the date's centre; it
-   travels out along --burst-dx/--burst-dy and fades as it goes. The
-   45deg rotation makes each mark a tiny diamond, the invitation's own
-   motif, rather than a generic confetti fleck. */
-@keyframes celebrationBurst {
+/* the date-reveal celebration — one leaf/petal/confetti piece releasing
+   from a top corner (see CelebrationParticles.tsx), travelling out along
+   --conf-dx/--conf-dy while it turns from --conf-rot-from to
+   --conf-rot-to and fades in, then out. Replaces the old, separate
+   `celebrationFall`/`celebrationBurst` keyframes — one system now, not
+   two smaller ones doing the same job. */
+@keyframes celebrationConfetti {
   0% {
-    transform: translate3d(0, 0, 0) scale(0.35) rotate(45deg);
+    transform: translate3d(0, 0, 0) rotate(var(--conf-rot-from, 0deg)) scale(0.5);
     opacity: 0;
   }
-  16% {
+  14% {
+    opacity: 1;
+  }
+  78% {
     opacity: 1;
   }
   100% {
-    transform: translate3d(var(--burst-dx, 0px), var(--burst-dy, -40px), 0) scale(1) rotate(45deg);
+    transform: translate3d(var(--conf-dx, 0px), var(--conf-dy, 120px), 0)
+      rotate(var(--conf-rot-to, 180deg)) scale(1);
     opacity: 0;
   }
 }
