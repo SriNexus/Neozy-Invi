@@ -69,24 +69,51 @@ it and fades the Cover away — the film is never swapped or remounted.
   is GONE — no `scroll-snap`, no `useSceneSnapRelease`. Do not reintroduce
   CSS scroll-snap: it cannot guarantee one-scene rests and fights the pager.
 - Full-screen reel scenes are normal-flow `100dvh` sections marked
-  `data-reel-scene` (CoupleIntro, the Date wrapper div, TitleScene, every
-  EventScene, and EVERY `AlbumLeaf` in CouplePhotoExperience — the album
-  contributes one scene per photograph, so a 5-photo album is 5 scenes and
-  the LAST photograph is the reel's final scene / hand-off boundary).
-  `useReelPager` reads them via
-  `document.querySelectorAll("[data-reel-scene]")` and pages the DOCUMENT
-  scroll (wheel = one scene with preventDefault; touch = claim the vertical
-  axis past a 6px slop, follow the finger 1:1, settle by fling/distance;
-  native rests = 140ms idle align to the nearest scene top).
+  `data-reel-scene` — CoupleIntro, the Date wrapper div, TitleScene, every
+  EventScene, every `AlbumLeaf` in CouplePhotoExperience, **and now
+  VenueSection, RsvpSection and ClosingSection too**. `useReelPager` reads
+  them via `document.querySelectorAll("[data-reel-scene]")` and pages the
+  DOCUMENT scroll (wheel = one scene with preventDefault; touch = claim the
+  vertical axis past a 6px slop, follow the finger 1:1, settle by
+  fling/distance; native rests = 140ms idle align to the nearest scene top).
+  **The reel now runs the ENTIRE invitation, top to bottom — there is no
+  more "reel ends after the album, normal scrolling resumes" concept.**
+  Venue/RSVP/Closing used to be plain document-flow sections with
+  content-driven (`minHeight`, not `height`) sizing — that inconsistent,
+  non-100dvh geometry was invisible to `readGeom()` (which only ever sees
+  `[data-reel-scene]` elements) and is exactly what let a guest rest with
+  two sections half-visible: the browser was free to stop anywhere inside
+  untagged content. Fixed by giving all three the same `data-reel-scene` +
+  fixed `height:"100dvh"` (+ flex-centering their own content, since
+  their content no longer stretches the section to fit) every earlier
+  scene already used. `useReelPager.ts` itself needed no new concept for
+  this — only its backward-navigation/idle-align bounds, which used to
+  stop at "the last scene's own top" or "50% into it" (both artifacts of
+  there being real content below the reel to hand off to), were widened to
+  cover the last scene's FULL height now that there's nothing beyond it.
+- RSVP's own content is the hard part of this: once "accepting" reveals
+  guest-count + up to 5 events + a note field, that's genuinely a lot for
+  one 100dvh screen with an explicit "no internal scroll" rule. Fixed by
+  real compaction, not by shrinking text below 14px: accept/decline are
+  short words in one row (was two stacked full-sentence buttons), guest
+  count is one inline row (was label-above-stepper), and event selection
+  is small wrapped chips (was a five-row vertical list) — this was the
+  single biggest space cost in the old layout. This was hand-verified
+  against a 375×667-class viewport, not rendered — see PRODUCT_AUDIT.md's
+  own standing caveat about anything not visually confirmed.
 - **Smoothness (deliberate design — keep it).** Every programmatic move,
   gesture paging AND the idle align, runs through ONE `GLIDE` curve: an exact
   `cubic-bezier(0.34, 0, 0.18, 1)` (soft, unhurried start → long calm
   landing) evaluated by a module-local bezier solver, over
   `min(1040ms, max(560ms, |dist| × 0.52))`. Nothing snaps — the idle align
   used to assign `scrollTop` instantly, which is exactly what made a native
-  rest read as a jump. `WHEEL_SETTLE_MS` (200ms) keeps wheel events swallowed
-  briefly after a landing, so one wheel burst (or a trackpad momentum tail)
-  pages exactly one scene instead of two.
+  rest read as a jump. `WHEEL_SETTLE_MS` (350ms, was 200ms — widened for
+  trackpad momentum tails) keeps wheel events swallowed briefly after a
+  landing, so one wheel burst pages exactly one scene instead of two. A
+  sustained touch drag is also capped to exactly one scene of movement
+  regardless of how many scene tops it visually crosses (an earlier
+  version allowed up to three via `s.crossings`, which is exactly what let
+  one strong swipe skip ahead multiple sections).
 - **Index.css deliberately has NO global `scroll-behavior: smooth`** — the
   pager assigns `scrollTop` every frame and needs instant-assignment
   semantics (smooth turns every write into a compositor animation that
@@ -161,13 +188,15 @@ the card is behind it, not the video.
   disagree; it now parses `wedding.time` for real via `parseTimeOfDay`).
   `venue.date`/`.time` updated to match (a duplicate of the same fact in
   a different object — the kind of "hidden old value" that's easy to
-  miss). The `events` array's OWN "wedding" entry was updated too;
-  mehendi/sangeet/haldi/reception were NOT (out of scope — nobody asked
-  for the other ceremonies moved, and guessing new dates for them would
-  be worse than leaving them alone), so haldi (still 2026-12-12) now
-  reads as happening 8 days AFTER the wedding — a pre-existing
-  placeholder-data inconsistency made newly visible, not something this
-  pass introduced or was asked to fix.
+  miss).
+  **Pass — official event schedule fixed**: the `events` array's dates
+  previously placed Mehendi/Sangeet/Haldi/Reception AFTER the wedding day
+  (a pre-existing placeholder-data bug, since corrected). The real
+  schedule is now the single source of truth: Mehendi 3 Dec 2:00 PM,
+  Sangeet 3 Dec 4:00 PM, Haldi 4 Dec 12:00 PM, Wedding 4 Dec (no
+  confirmed time — `EventData.time` is optional precisely for this case,
+  and `EventScene` simply omits the time line when absent), Reception
+  4 Dec 6:00 PM.
 - `src/data/store.ts` — `invitationStore` (get/set/patch/subscribe/reset),
   **persisted to localStorage key `neozy-invi:invitation-data`**; stored data
   is merged over defaults and WINS. ⚠️ Changing a default in invitation.ts
@@ -587,11 +616,28 @@ the card is behind it, not the video.
   `broken` set (keyed by the image path).
 - `VenueSection.tsx` — the Venue page: `venue.image || theme.assets.venueImage`
   under a deep warm veil with ivory type (`hasImage` swaps the whole palette).
+  Now a fixed `100dvh` `data-reel-scene` (was `minHeight:"92dvh"`, plain
+  document flow) — see the reel architecture note above.
+- `RsvpSection.tsx` — now a fixed `100dvh` `data-reel-scene` too, flex-
+  centered so both the compact default form and the short confirmed/
+  declined states sit centered rather than pinned to the top. Its
+  expanded state (guest count + event chips shown) is genuinely tight on
+  375px-class phones — hand-verified, not rendered.
 - `ClosingSection.tsx` — the closing page: `theme.assets.closingImage`
-  full-bleed under a CREAM radial veil (light, not the Venue's dark one) so
-  the printed dark ink stays exactly as readable as on paper and the
-  invitation ends on its own paper world. `object-position: center 38%`;
-  falls back to the paper world if the artwork fails.
+  (now `endsection.jpg`, a deliberate placeholder copy of `cover.jpg` —
+  see the asset note near `themes.ts`) full-bleed under a CREAM radial
+  veil (light, not the Venue's dark one) so the printed dark ink stays
+  exactly as readable as on paper and the invitation ends on its own
+  paper world. `object-position: center 38%`; falls back to the paper
+  world if the artwork fails. Now a fixed `100dvh` `data-reel-scene`
+  (was `minHeight:"96dvh"`).
+- `ViewOnMapButton.tsx` — the shared premium 3D "View on Map" action
+  (the same raised-ivory-card recipe as Countdown's boxes: layered
+  inset+outer shadows, hairline gold border, no glassmorphism). Used by
+  both VenueSection and every EventScene's directions link — previously
+  each drew its own plain underlined-text-style link ("Find the way" /
+  "View Directions"); now one component, one label, one CSS hover/press
+  treatment (`.view-on-map-button` in index.css).
 - `decor/Ornaments.tsx` — the illustrated SVG language: CornerFloret/
   CornerArabesque/ThemeCorner, HairRule (tapered rule + dot/diamond node),
   Divider (emblem + rules), Emblem (lotus/star/geometric), AmpersandOrnament,

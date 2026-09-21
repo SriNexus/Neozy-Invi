@@ -5,8 +5,9 @@ import type { EventWallpaper } from "../data/themes";
 import { parseEventDate } from "../data/invitation";
 import { useActiveTheme } from "../data/useTheme";
 import { prefersReducedMotion } from "../lib/motion";
-import { HairRule, JharokhaArch, ThemeCorner } from "./decor/Ornaments";
+import { EventEmblem, HairRule, JharokhaArch, ThemeCorner } from "./decor/Ornaments";
 import { motifForEvent } from "../lib/eventMotif";
+import ViewOnMapButton from "./ViewOnMapButton";
 
 /**
  * The Celebrations — the events chapter as a reel of designed pages
@@ -259,9 +260,9 @@ function TitleScene({ reduce }: { reduce: boolean }) {
             ...step(0),
             color: "var(--gold-invite-dim)",
             // kept above the parent-name baseline (13px), not just at it
-            fontSize: "clamp(14px, 3vw, 16px)",
-            letterSpacing: "0.5em",
-            marginLeft: "0.5em",
+            fontSize: "clamp(15px, 3.2vw, 17px)",
+            letterSpacing: "0.45em",
+            marginLeft: "0.45em",
             textTransform: "uppercase",
           }}
         >
@@ -293,8 +294,8 @@ function TitleScene({ reduce }: { reduce: boolean }) {
             color: "var(--text-tertiary)",
             fontFamily: "'Cormorant', serif",
             fontStyle: "italic",
-            fontSize: "clamp(14px, 3.2vw, 15.5px)",
-            lineHeight: 1.6,
+            fontSize: "clamp(15px, 3.6vw, 17px)",
+            lineHeight: 1.65,
           }}
         >
           Four days of ceremony, music and love — we would be honoured by
@@ -302,59 +303,6 @@ function TitleScene({ reduce }: { reduce: boolean }) {
         </p>
       </div>
     </section>
-  );
-}
-
-/* ─────────────────────────────────────────────────────────────
-   DirectionsAction — a refined printed-ticket action: a location
-   pin in a whisper-thin circle + tracked small caps, sitting on a
-   hairline underline. Understated, never a SaaS button.
-   ───────────────────────────────────────────────────────────── */
-function DirectionsAction({ href }: { href: string }) {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      aria-label="Open directions in Google Maps"
-      className="directions-action"
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 11,
-        padding: "10px 2px 9px",
-        color: "var(--gold-invite)",
-        border: "none",
-        borderBottom: "1px solid rgba(184,148,63,0.55)",
-        background: "transparent",
-        fontFamily: "var(--font-sc)",
-        // kept above the parent-name baseline (13px), not just at it
-        fontSize: "clamp(14px, 3vw, 15.5px)",
-        fontWeight: 600,
-        letterSpacing: "0.22em",
-        marginLeft: "0.22em",
-        textTransform: "uppercase",
-        textDecoration: "none",
-      }}
-    >
-      <span
-        aria-hidden="true"
-        className="inline-flex items-center justify-center"
-        style={{
-          width: 22,
-          height: 22,
-          borderRadius: "50%",
-          border: "1px solid rgba(184,148,63,0.45)",
-          flex: "none",
-        }}
-      >
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-          <circle cx="12" cy="9" r="2.5" />
-        </svg>
-      </span>
-      View Directions
-    </a>
   );
 }
 
@@ -375,6 +323,7 @@ function EventScene({
   const d = parseEventDate(event.date);
   const weekday = d.toLocaleDateString("en-US", { weekday: "long" });
   const month = d.toLocaleDateString("en-US", { month: "long" }).toUpperCase();
+  const year = d.getFullYear();
   const dayNum = d.getDate();
   const motif = motifForEvent(event);
   /* this ceremony's OWN artwork, from the theme's asset map — never a path
@@ -398,11 +347,16 @@ function EventScene({
     return () => obs.disconnect();
   }, []);
 
+  // a whisper of scale added to the existing rise+fade — the same
+  // restrained "settle" quality the couple scene's own reveals use —
+  // costs nothing in the layout (transform never affects flow), so it
+  // was free to add without touching this section's already-tight
+  // vertical budget at 375px-class viewports.
   const step = (i: number): CSSProperties => {
     if (reduce) return { opacity: 1 };
     return {
       opacity: inView ? 1 : 0,
-      transform: inView ? "translateY(0)" : "translateY(16px)",
+      transform: inView ? "translateY(0) scale(1)" : "translateY(16px) scale(0.97)",
       transition: `opacity 0.95s ${EASE} ${i * 0.1}s, transform 0.95s ${EASE} ${i * 0.1}s`,
     };
   };
@@ -519,94 +473,121 @@ function EventScene({
             </h2>
           )}
 
-          {/* the date — engraved, invitation-styled. The day numeral now
+          {/* the date — engraved, invitation-styled. The day numeral
               carries the SAME dimensional gold-foil treatment as the
-              Save the Date/welcome hero moments (see DAY_GOLD_* above),
-              in place of a flat solid ink — the strongest, most
-              deliberate voice on the page, matching item 10's "DATE
-              clearly prominent" and giving the whole section real
-              carved depth instead of reading as plain overlay text. */}
+              Save the Date/welcome hero moments (see DAY_GOLD_* above) —
+              the strongest, most deliberate voice on the page.
+
+              PASS — date hierarchy fixed: the numeral used to sit on the
+              SAME row as the month, baseline-aligned, which meant the
+              month had to stay small (14–16px) just to fit next to a
+              32–46px numeral — exactly the "huge 4, tiny December"
+              complaint. The numeral now has its own line, and "MONTH
+              YEAR" is its own clearly-readable line beneath it (bumped
+              from a 14–16px caption size to a real LEVEL-2 tier) —
+              LEVEL 1 (numeral) → LEVEL 2 (month + year) → LEVEL 3
+              (weekday / time / venue) → LEVEL 4 (address), all still
+              ≥14px. Every gap in this block was re-measured and trimmed
+              slightly to buy back the vertical room this restructure
+              costs, so the panel still fits its measured ≈28.5dvh area
+              on 375px-class phones.
+
+              The weekday line carries this ceremony's own hand-drawn
+              emblem (`EventEmblem`, keyed by the SAME `motif` already
+              resolved for the artwork lookup) inline, at zero extra
+              height cost — unchanged from the previous pass. */}
           <div style={{ ...step(1), display: "flex", flexDirection: "column", alignItems: "center" }}>
             <span
-              className="font-sc"
-              style={{
-                color: "var(--gold-invite-dim)",
-                // kept above the parent-name baseline (13px), not just at it
-                fontSize: "clamp(14px, 3vw, 15.5px)",
-                letterSpacing: "0.3em",
-                marginLeft: "0.38em",
-                textTransform: "uppercase",
-              }}
+              className="flex items-center justify-center"
+              style={{ gap: "0.45em" }}
             >
-              {weekday}
-            </span>
-            <div className="flex items-baseline" style={{ gap: 11, marginTop: "clamp(5px, 1.2dvh, 9px)" }}>
-              <span
-                style={{
-                  fontFamily: "var(--font-couple)",
-                  fontVariationSettings: '"opsz" 96, "SOFT" 50, "WONK" 1',
-                  fontWeight: 600,
-                  fontSize: "clamp(32px, min(10.2vw, 11.6dvh), 46px)",
-                  lineHeight: 0.9,
-                  background: DAY_GOLD_FILL,
-                  WebkitBackgroundClip: "text",
-                  backgroundClip: "text",
-                  color: "transparent",
-                  textShadow: DAY_GOLD_EXTRUDE,
-                  filter: DAY_GOLD_AMBIENT,
-                }}
-              >
-                {dayNum}
-              </span>
+              <EventEmblem motif={motif} size={15} />
               <span
                 className="font-sc"
                 style={{
-                  color: "var(--gold-invite)",
-                  fontSize: "clamp(14px, 3.1vw, 16px)",
-                  fontWeight: 600,
-                  letterSpacing: "0.24em",
-                  marginLeft: "0.3em",
+                  color: "var(--gold-invite-dim)",
+                  // LEVEL 3 — kept above the parent-name baseline (13px)
+                  fontSize: "clamp(14px, 3vw, 15.5px)",
+                  letterSpacing: "0.3em",
+                  textTransform: "uppercase",
                 }}
               >
-                {month}
+                {weekday}
               </span>
-            </div>
+            </span>
+
+            {/* LEVEL 1 — the hero numeral, now alone on its own line */}
+            <span
+              style={{
+                marginTop: "clamp(4px, 1dvh, 7px)",
+                fontFamily: "var(--font-couple)",
+                fontVariationSettings: '"opsz" 96, "SOFT" 50, "WONK" 1',
+                fontWeight: 600,
+                fontSize: "clamp(32px, min(10.2vw, 11.6dvh), 46px)",
+                lineHeight: 0.9,
+                background: DAY_GOLD_FILL,
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                textShadow: DAY_GOLD_EXTRUDE,
+                filter: DAY_GOLD_AMBIENT,
+              }}
+            >
+              {dayNum}
+            </span>
+
+            {/* LEVEL 2 — month + year together, clearly readable on its
+                own line (was riding along the numeral's row at caption
+                size; now a real secondary tier) */}
             <span
               className="font-sc"
               style={{
-                marginTop: "clamp(4px, 1dvh, 7px)",
+                marginTop: "clamp(1px, 0.3dvh, 3px)",
                 color: "var(--gold-invite)",
-                fontSize: "clamp(14px, 2.8vw, 15.5px)",
+                fontSize: "clamp(17px, 4.4vw, 21px)",
                 fontWeight: 600,
                 letterSpacing: "0.2em",
                 marginLeft: "0.2em",
-                textTransform: "uppercase",
               }}
             >
-              {event.time}
+              {month} {year}
             </span>
+
+            {/* the wedding ceremony's own exact time isn't confirmed yet
+                (see EventData.time and invitation.ts) — this line simply
+                doesn't render rather than showing a guessed value */}
+            {event.time && (
+              <span
+                className="font-sc"
+                style={{
+                  marginTop: "clamp(3px, 0.8dvh, 6px)",
+                  color: "var(--gold-invite)",
+                  // LEVEL 3
+                  fontSize: "clamp(14px, 2.8vw, 15.5px)",
+                  fontWeight: 600,
+                  letterSpacing: "0.2em",
+                  marginLeft: "0.2em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {event.time}
+              </span>
+            )}
           </div>
 
           {/* a restrained gold hairline between the date and venue
-              clusters — the "refined gold separator" the section was
-              missing, replacing a plain margin gap with an intentional
-              mark of its own (a fraction of a diamond node, not a full
-              rule across the page), so the page reads as composed
-              rather than two stacked text blocks. Its own footprint is
-              tiny (a 1px line + a small node), so it does not cost the
-              vertical budget the venue block used to spend on a bare
-              gap. */}
-          <div style={{ ...step(2), marginTop: "clamp(6px, 1.3dvh, 10px)" }}>
-            <HairRule width={64} node="diamond" style={{ opacity: 0.85 }} />
+              clusters — a fraction of a diamond node, not a full rule
+              across the page, so the page reads as composed rather than
+              two stacked text blocks. */}
+          <div style={{ ...step(2), marginTop: "clamp(4px, 1dvh, 7px)" }}>
+            <HairRule width="clamp(52px, 15vw, 76px)" node="diamond" style={{ opacity: 0.85 }} />
           </div>
 
-          {/* the venue — secondary but designed: lifted a step above the
-              supporting caption voice (item 10's "VENUE clearly
-              readable", distinct from the address beneath it) with a
-              warmer, richer ink and a touch more size, while the
-              address stays the smallest tier — kept just above the
-              13px baseline, never at it. */}
-          <div style={{ ...step(2), marginTop: "clamp(6px, 1.3dvh, 10px)" }}>
+          {/* the venue — LEVEL 3, distinct from the address beneath it
+              (LEVEL 4) with a warmer, richer ink and a touch more size,
+              while the address stays the smallest tier — kept just
+              above the 13px baseline, never at it. */}
+          <div style={{ ...step(2), marginTop: "clamp(4px, 1dvh, 7px)" }}>
             <span
               className="font-sc"
               style={{
@@ -636,11 +617,11 @@ function EventScene({
             )}
           </div>
 
-          {/* the action — refined and invitation-appropriate; part of
-              the venue/location details, so it stays */}
+          {/* the action — now an obviously-pressable premium card
+              instead of a text-like link (see ViewOnMapButton.tsx) */}
           {event.directionsUrl && (
-            <div style={{ ...step(3), marginTop: "clamp(10px, 2.2dvh, 15px)" }}>
-              <DirectionsAction href={event.directionsUrl} />
+            <div style={{ ...step(3), marginTop: "clamp(6px, 1.4dvh, 10px)" }}>
+              <ViewOnMapButton href={event.directionsUrl} ariaLabel={`View ${event.venue} on Google Maps`} />
             </div>
           )}
         </div>

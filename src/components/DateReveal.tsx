@@ -24,7 +24,7 @@ interface Props {
   reduceMotion: boolean;
 }
 
-/* ── LAYOUT — measured against the CURRENT savethedate.jpg, pixel-
+/* ── LAYOUT — measured against the CURRENT save-the-date-background.jpg, pixel-
    sampled and visually inspected, not guessed. IMPORTANT: the artwork
    was replaced AGAIN since the previous pass (768×1376 → 784×1373, and
    a genuinely different, monochrome antique-cream/rose-gold palette —

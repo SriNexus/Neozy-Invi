@@ -116,8 +116,8 @@ export default function CouplePhotoExperience({
             className="font-sc"
             style={{
               color: "var(--gold-invite-dim)",
-              // global floor: never below the parent-name baseline (13px)
-              fontSize: "clamp(13px, 3vw, 15px)",
+              // kept above the parent-name baseline (13px), not just at it
+              fontSize: "clamp(14px, 3vw, 16px)",
               letterSpacing: "0.4em",
               textTransform: "uppercase",
             }}
@@ -161,7 +161,7 @@ export default function CouplePhotoExperience({
               color: "var(--text-secondary)",
               fontFamily: "'Cormorant', serif",
               fontStyle: "italic",
-              fontSize: "clamp(13px, 3.4vw, 15px)",
+              fontSize: "clamp(14px, 3.4vw, 15.5px)",
               lineHeight: 1.65,
             }}
           >
@@ -264,8 +264,8 @@ function AlbumLeaf({
             className="font-sc"
             style={{
               color: "var(--gold-invite-dim)",
-              // global floor: never below the parent-name baseline (13px)
-              fontSize: "clamp(13px, 3vw, 15px)",
+              // kept above the parent-name baseline (13px), not just at it
+              fontSize: "clamp(14px, 3vw, 16px)",
               letterSpacing: "0.4em",
               marginLeft: "0.4em",
               textTransform: "uppercase",
@@ -284,8 +284,8 @@ function AlbumLeaf({
               aria-label={`Photograph ${index + 1} of ${total}`}
               style={{
                 color: "var(--gold-invite)",
-                // global floor: never below the parent-name baseline (13px)
-                fontSize: "clamp(13px, 2.6vw, 14px)",
+                // kept above the parent-name baseline (13px), not just at it
+                fontSize: "clamp(14px, 2.6vw, 15px)",
                 fontWeight: 600,
                 letterSpacing: "0.24em",
                 marginLeft: "0.3em",
@@ -389,7 +389,7 @@ function AlbumLeaf({
               color: "var(--text-secondary)",
               fontFamily: "'Cormorant', serif",
               fontStyle: "italic",
-              fontSize: "clamp(13px, 3.6vw, 16px)",
+              fontSize: "clamp(14px, 3.6vw, 16px)",
               lineHeight: 1.3,
               whiteSpace: "nowrap",
               overflow: "hidden",

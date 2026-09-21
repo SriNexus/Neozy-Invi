@@ -45,9 +45,9 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 8,
   color: "var(--text-secondary)",
   fontFamily: "var(--font-sc)",
-  // global floor: never below the parent-name baseline (13px)
-  fontSize: 13,
-  letterSpacing: "0.18em",
+  // kept above the parent-name baseline (13px), not just at it
+  fontSize: 14,
+  letterSpacing: "0.16em",
   textTransform: "uppercase",
 };
 
@@ -105,11 +105,13 @@ export default function RsvpSection({
 
   return (
     <section
-      className="relative w-full"
-      style={{ padding: "clamp(64px,12vw,110px) clamp(20px,5vw,40px)" }}
+      data-reel-scene
+      className="relative w-full overflow-hidden flex flex-col items-center justify-center"
+      style={{ height: "100dvh", padding: "clamp(18px,4.5vw,36px) clamp(20px,5vw,40px)" }}
     >
       <div
         ref={ref}
+        className="w-full"
         style={{
           opacity: inView ? 1 : 0,
           transform: inView ? "translateY(0)" : "translateY(24px)",
@@ -131,7 +133,7 @@ export default function RsvpSection({
               >
                 With joy
               </h2>
-              <p style={{ color: "var(--text-secondary)", fontStyle: "italic", marginTop: 12, lineHeight: 1.6 }}>
+              <p style={{ color: "var(--text-secondary)", fontSize: 15, fontStyle: "italic", marginTop: 12, lineHeight: 1.6 }}>
                 Your reply is on its way to us.
               </p>
               {config.message && (
@@ -155,7 +157,7 @@ export default function RsvpSection({
               >
                 You'll be missed
               </h2>
-              <p style={{ color: "var(--text-secondary)", fontStyle: "italic", marginTop: 12, lineHeight: 1.6 }}>
+              <p style={{ color: "var(--text-secondary)", fontSize: 15, fontStyle: "italic", marginTop: 12, lineHeight: 1.6 }}>
                 Thank you for letting us know — you'll be in our hearts on the day.
               </p>
             </div>
@@ -166,7 +168,19 @@ export default function RsvpSection({
           <Frame corner={theme.motifs.corner}>
             <Heading kicker="Réponse" title="Kindly reply" emblem={theme.motifs.divider} />
 
-            <form onSubmit={submit} className="mt-8 space-y-6">
+            {/* PASS — RSVP is now a fixed 100dvh reel scene (see below),
+                so its entire content — including the fully expanded
+                state, once "accepting" reveals guest-count and event
+                selection — must fit inside one viewport with NO internal
+                scroll, per an explicit "no nested scrolling" rule. Every
+                gap/field below was retimed for that: accept/decline are
+                short words in one compact row instead of two stacked
+                full-sentence buttons, guest count is one inline row
+                instead of a label-above-stepper block, and event
+                selection is small wrapped chips instead of a five-row
+                vertical list — the same information, considerably less
+                height, still ≥14px throughout. */}
+            <form onSubmit={submit} className="mt-4 space-y-3">
               <div>
                 <label style={labelStyle}>Name</label>
                 <input
@@ -193,8 +207,8 @@ export default function RsvpSection({
                 <label style={labelStyle}>Will you join us?</label>
                 <div className="flex gap-3">
                   {[
-                    { v: true, label: "Joyfully accepts" },
-                    { v: false, label: "Regretfully declines" },
+                    { v: true, label: "Accept", icon: "check" as const },
+                    { v: false, label: "Decline", icon: "x" as const },
                   ].map((opt) => {
                     const on = attending === opt.v;
                     return (
@@ -202,20 +216,29 @@ export default function RsvpSection({
                         key={String(opt.v)}
                         type="button"
                         onClick={() => setAttending(opt.v)}
-                        className="flex-1 py-3 px-2"
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 px-2"
                         style={{
                           background: on ? "rgba(184,148,63,0.14)" : "rgba(255,253,248,0.5)",
                           border: `1px solid ${on ? "var(--gold-invite)" : "rgba(184,148,63,0.25)"}`,
                           borderRadius: 2,
                           color: on ? "var(--gold-invite)" : "var(--text-secondary)",
                           fontFamily: "var(--font-sc)",
-                          // global floor: never below the parent-name baseline
-                          fontSize: 13,
-                          letterSpacing: "0.08em",
+                          // kept above the parent-name baseline (13px), not just at it
+                          fontSize: 14,
+                          letterSpacing: "0.1em",
                           textTransform: "uppercase",
                           transition: "all 0.25s ease",
                         }}
                       >
+                        {opt.icon === "check" ? (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                            <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        ) : (
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                            <path d="M18 6L6 18M6 6l12 12" strokeLinecap="round" />
+                          </svg>
+                        )}
                         {opt.label}
                       </button>
                     );
@@ -224,16 +247,16 @@ export default function RsvpSection({
               </div>
 
               {attending === true && config.guestCountEnabled && (
-                <div>
-                  <label style={labelStyle}>How many will attend?</label>
-                  <div className="flex items-center gap-4">
+                <div className="flex items-center justify-between gap-4">
+                  <label style={{ ...labelStyle, marginBottom: 0 }}>How many?</label>
+                  <div className="flex items-center gap-3">
                     <Stepper
                       value={guestCount}
                       min={1}
                       max={maxGuests}
                       onChange={setGuestCount}
                     />
-                    <span style={{ color: "var(--text-tertiary)", fontSize: 13, fontStyle: "italic" }}>
+                    <span style={{ color: "var(--text-tertiary)", fontSize: 14, fontStyle: "italic", whiteSpace: "nowrap" }}>
                       {guestCount === 1 ? "just me" : `${guestCount} of us`}
                     </span>
                   </div>
@@ -243,7 +266,12 @@ export default function RsvpSection({
               {attending === true && events.length > 0 && (
                 <div>
                   <label style={labelStyle}>Which celebrations?</label>
-                  <div className="space-y-2">
+                  {/* compact wrapped chips — the same multi-select as the
+                      previous full-width row list, in roughly a third of
+                      the vertical space (a five-event list of full-width
+                      rows was the single biggest reason this form's
+                      expanded state didn't fit one screen) */}
+                  <div className="flex flex-wrap" style={{ gap: 8 }}>
                     {events.map((ev) => {
                       const on = selected.has(ev.id);
                       return (
@@ -251,35 +279,33 @@ export default function RsvpSection({
                           key={ev.id}
                           type="button"
                           onClick={() => toggleEvent(ev.id)}
-                          className="w-full flex items-center gap-3 px-3 py-2.5 text-left"
+                          className="inline-flex items-center gap-1.5"
                           style={{
-                            background: on ? "rgba(184,148,63,0.1)" : "rgba(255,253,248,0.4)",
-                            border: `1px solid ${on ? "rgba(184,148,63,0.45)" : "rgba(184,148,63,0.18)"}`,
-                            borderRadius: 2,
+                            padding: "7px 12px",
+                            background: on ? "rgba(184,148,63,0.14)" : "rgba(255,253,248,0.5)",
+                            border: `1px solid ${on ? "var(--gold-invite)" : "rgba(184,148,63,0.3)"}`,
+                            borderRadius: 3,
+                            color: on ? "var(--gold-invite)" : "var(--text-secondary)",
+                            fontSize: 14,
                           }}
                         >
                           <span
                             className="flex items-center justify-center shrink-0"
                             style={{
-                              width: 16,
-                              height: 16,
+                              width: 14,
+                              height: 14,
                               borderRadius: "50%",
                               border: `1px solid ${on ? "var(--gold-invite)" : "rgba(184,148,63,0.4)"}`,
                               background: on ? "var(--gold-invite)" : "transparent",
                             }}
                           >
                             {on && (
-                              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
+                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3">
                                 <path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             )}
                           </span>
-                          <span style={{ color: "var(--text-primary)", fontSize: 14 }}>
-                            {ev.name}
-                            <span style={{ color: "var(--text-tertiary)", fontSize: 13 }}>
-                              {"  ·  "}{ev.time}
-                            </span>
-                          </span>
+                          {ev.name}
                         </button>
                       );
                     })}
@@ -293,13 +319,13 @@ export default function RsvpSection({
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   placeholder="Your blessing or wishes…"
-                  rows={3}
-                  style={{ ...fieldStyle, resize: "none" }}
+                  rows={2}
+                  style={{ ...fieldStyle, padding: "10px 14px", resize: "none" }}
                 />
               </div>
 
               {error && (
-                <p role="alert" style={{ color: "#a8574f", fontSize: 13, textAlign: "center", fontStyle: "italic" }}>
+                <p role="alert" style={{ color: "#a8574f", fontSize: 14, textAlign: "center", fontStyle: "italic" }}>
                   {error}
                 </p>
               )}
@@ -307,14 +333,14 @@ export default function RsvpSection({
               <button
                 type="submit"
                 disabled={phase === "submitting"}
-                className="w-full py-3.5"
+                className="w-full py-3"
                 style={{
                   background: "linear-gradient(135deg, var(--gold-invite), var(--gold-invite-light))",
                   color: "#1c1408",
                   fontFamily: "var(--font-sc)",
-                  // global floor: never below the parent-name baseline
-                  fontSize: 13,
-                  letterSpacing: "0.15em",
+                  // kept above the parent-name baseline (13px), not just at it
+                  fontSize: 14,
+                  letterSpacing: "0.13em",
                   textTransform: "uppercase",
                   borderRadius: 2,
                   opacity: phase === "submitting" ? 0.7 : 1,
@@ -345,7 +371,7 @@ function Frame({
       className="relative paper-grain mx-auto"
       style={{
         maxWidth: "min(92vw, 520px)",
-        padding: "clamp(28px,7vw,48px) clamp(20px,6vw,44px)",
+        padding: "clamp(14px,3.5vw,26px) clamp(18px,5vw,36px)",
         background: "linear-gradient(158deg, rgba(252,249,242,0.9), rgba(244,236,220,0.86))",
         backdropFilter: "blur(8px)",
         WebkitBackdropFilter: "blur(8px)",
@@ -388,27 +414,28 @@ function Heading({
         className="font-sc"
         style={{
           color: "var(--gold-invite-dim)",
-          // global floor: never below the parent-name baseline (13px)
-          fontSize: "clamp(13px,3vw,15px)",
-          letterSpacing: "0.35em",
+          // kept above the parent-name baseline (13px), not just at it
+          fontSize: "clamp(14px,3vw,16px)",
+          letterSpacing: "0.32em",
+          marginLeft: "0.32em",
           textTransform: "uppercase",
         }}
       >
         {kicker}
       </span>
       <h2
-        className="mt-3"
+        className="mt-2"
         style={{
           fontFamily: "var(--font-display)",
           fontStyle: "italic",
           color: "var(--text-primary)",
-          fontSize: "clamp(26px,7vw,38px)",
+          fontSize: "clamp(24px,6.4vw,34px)",
           fontWeight: 500,
         }}
       >
         {title}
       </h2>
-      <Divider emblem={emblem} width={140} className="mt-4" />
+      <Divider emblem={emblem} width={120} className="mt-2" />
     </div>
   );
 }

@@ -98,22 +98,6 @@ export default function AdminEdit() {
               />
             </Field>
           </div>
-          <Field label="Header Line">
-            <input
-              value={draft.couple.header || ""}
-              onChange={(e) => updateCouple("header", e.target.value)}
-              placeholder="Together With Our Families"
-              className="admin-input"
-            />
-          </Field>
-          <Field label="Body Text (one line per paragraph)">
-            <textarea
-              value={(draft.couple.body || []).join("\n")}
-              onChange={(e) => updateCouple("body", e.target.value.split("\n"))}
-              rows={3}
-              className="admin-input"
-            />
-          </Field>
         </Section>
 
         {/* Wedding */}

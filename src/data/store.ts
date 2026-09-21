@@ -20,10 +20,10 @@ type Listener = (data: InvitationData) => void;
 
 /**
  * Merge persisted data over the current defaults so a cached copy from
- * an older schema (missing newly-added fields like couple.scriptAccent,
- * event.motif or rsvp.guestCountEnabled) still renders correctly and
- * never throws. Objects are merged one level deep; arrays and scalars
- * from storage win outright.
+ * an older schema (missing newly-added fields like event.motif or
+ * rsvp.guestCountEnabled) still renders correctly and never throws.
+ * Objects are merged one level deep; arrays and scalars from storage
+ * win outright.
  */
 function reconcile(stored: unknown): InvitationData {
   const base = structuredClone(defaultInvitation);

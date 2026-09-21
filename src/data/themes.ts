@@ -170,8 +170,12 @@ const IMG = "/themes/theme-1/images/";
    Each ceremony's OWN artwork — ONE painting per event, permanently.
 
    These are ordinary files in `public/themes/theme-1/images/`: replace
-   `haldi.jpg` (or any of the others) and that ceremony's page shows the new
-   painting, with no code change.
+   `haldi-background.jpg` (or any of the others) and that ceremony's page
+   shows the new painting, with no code change. Filenames are explicitly
+   section-scoped (`<ceremony>-background.jpg`) rather than bare ceremony
+   names, so a future Super Admin asset manager can present "Haldi
+   background" as an unambiguous, named upload slot rather than a mystery
+   filename shared with nothing else.
 
    DELIBERATELY STATIC. Nothing here rotates, crossfades, re-mounts on
    scroll or cycles on a timer: the artwork a ceremony is given is the
@@ -183,11 +187,11 @@ const IMG = "/themes/theme-1/images/";
    A ceremony with no entry here keeps the printed paper page.
    ───────────────────────────────────────────────────────────── */
 const EVENT_BACKGROUNDS: Record<string, EventWallpaper> = {
-  mehendi: { ground: `${IMG}mehendi.jpg` },
-  sangeet: { ground: `${IMG}sangeet.jpg` },
-  haldi: { ground: `${IMG}haldi.jpg` },
-  wedding: { ground: `${IMG}wedding.jpg` },
-  reception: { ground: `${IMG}reception.jpg` },
+  mehendi: { ground: `${IMG}mehendi-background.jpg` },
+  sangeet: { ground: `${IMG}sangeet-background.jpg` },
+  haldi: { ground: `${IMG}haldi-background.jpg` },
+  wedding: { ground: `${IMG}wedding-background.jpg` },
+  reception: { ground: `${IMG}reception-background.jpg` },
 };
 
 /** Shared defaults so a theme only overrides what makes it distinct. */
@@ -203,18 +207,35 @@ const BASE: Pick<ThemeConfig, "fonts" | "assets" | "motifs" | "layout" | "paperW
   // application. Every theme below currently shares this base set.
   assets: {
     // The Date Reveal scene's own artwork — see the ThemeAssets doc above.
-    dateRevealPoster: "/themes/theme-1/images/savethedate.jpg",
+    dateRevealPoster: `${IMG}save-the-date-background.jpg`,
     // The Celebrations chapter: ONE painting per ceremony, keyed by motif
     // (see EVENT_BACKGROUNDS). Replacing a file in
     // public/themes/theme-1/images/ updates that ceremony's page.
     eventBackgrounds: { ...EVENT_BACKGROUNDS },
     // The Venue section's own artwork (used only when the invitation has no
-    // venue photograph of its own) — the painted jharokha, palatial and
-    // portrait-shaped, which is what a tall full-width section needs.
-    venueImage: `${IMG}couple-poster.jpg`,
-    // The closing page's artwork — the invitation's cover art, closing the
-    // book it opened.
-    closingImage: `${IMG}cover.jpg`,
+    // venue photograph of its own). ⚠️ NO dedicated venue photograph has
+    // ever actually been produced for Theme 1 — this previously pointed at
+    // a non-existent file (`couple-poster.jpg`), so the Venue section has
+    // been silently rendering its designed "no-photo" jharokha fallback
+    // for every visitor. Left empty on purpose rather than pointed at an
+    // unrelated photo borrowed from another section (that would be the
+    // exact "ambiguous shared asset" problem this file's naming is meant
+    // to avoid) — see PRODUCT_AUDIT.md and IMPLEMENTATION_PLAN.md's open
+    // decisions. A real venue asset should be supplied and this filled in
+    // once Theme 1's asset library is managed through the platform.
+    venueImage: "",
+    // The closing page's artwork. PLACEHOLDER: this now points at
+    // `endsection.jpg`, a plain file COPY of `cover.jpg` (the entry
+    // Cover's own image, untouched at its original path) — a deliberate,
+    // one-time duplication, not the "ambiguous shared filename" problem
+    // this file's naming otherwise guards against. Closing used to
+    // intentionally reuse `cover.jpg` directly ("the invitation closes on
+    // the same portrait it opened on"); the product direction is now a
+    // dedicated final image for this section, so it has its own asset
+    // identity to replace independently, without touching the Cover.
+    // Swap `endsection.jpg` for the real final photograph when ready —
+    // nothing else needs to change.
+    closingImage: `${IMG}endsection.jpg`,
     // The album's pages, until the couple uploads their own gallery — see
     // the ThemeAssets.albumArt doc comment above for the ranking rationale.
     albumArt: [

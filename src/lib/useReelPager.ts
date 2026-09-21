@@ -7,11 +7,24 @@ import { prefersReducedMotion } from "./motion";
  *
  * Every full-screen scene in the guest journey (Couple, Date, the
  * Celebrations chapter page, every ceremony, every one of the Couple
- * Photo album's photographs) is marked with `data-reel-scene`. Scenes sit in normal document
- * flow, each one viewport tall, each carrying its OWN background so
- * background + foreground move together. This hook is the single piece
- * of input logic that turns that flow into a vertical reels-style
- * experience:
+ * Photo album's photographs, Venue, RSVP, and the Closing page) is
+ * marked with `data-reel-scene`. The ENTIRE invitation, top to bottom,
+ * is one reel now — there is no longer a "the reel ends after the
+ * album, normal page scrolling resumes after that" hand-off; Venue,
+ * RSVP and Closing used to be plain document-flow sections with
+ * content-driven, inconsistent heights, which is exactly what let a
+ * guest rest halfway between two of them (a real geometry bug, not a
+ * gesture bug — `readGeom()` only ever sees `[data-reel-scene]`
+ * elements, so an untagged section was invisible to this whole
+ * mechanism and the browser was free to rest anywhere inside it).
+ * Fixed by giving those three sections the same `data-reel-scene` +
+ * fixed `100dvh` treatment every earlier scene already used — this file
+ * needed no new concept, only more scenes tagged correctly.
+ *
+ * Scenes sit in normal document flow, each one viewport tall, each
+ * carrying its OWN background so background + foreground move together.
+ * This hook is the single piece of input logic that turns that flow
+ * into a vertical reels-style experience:
  *
  *   · one gesture = one scene (never Event 1 → Event 3 by accident)
  *   · a transition lock holds while the scene glides, so gestures can
@@ -23,9 +36,9 @@ import { prefersReducedMotion } from "./motion";
  *     so a scene change is smooth and cinematic rather than flicked
  *   · a native rest (scrollbar, keyboard) is eased onto its scene with
  *     that same glide — it is never snapped onto it
- *   · the first scene cannot scroll above the invitation; past the
- *     last scene (the album's final photograph) normal page scrolling
- *     resumes, and scrolling back up re-enters the reel cleanly
+ *   · the first scene cannot scroll above the invitation; the last
+ *     scene (now the Closing page) cannot scroll below it — there is
+ *     nothing beneath it for the browser to hand off to any more
  *
  * The mechanism is deliberately low-level and single-owner:
  *
@@ -35,12 +48,25 @@ import { prefersReducedMotion } from "./motion";
  *   claimed and the browser scrolls normally.
  *
  *   TOUCH — vertical intent (|dy| clearly > |dx|, past a small slop)
- *   is claimed; from that moment the page follows the finger 1:1.
- *   On release the gesture settles to the scene it earned: a decisive
- *   fling moves one scene, a sustained drag moves as many scene tops
- *   as it actually crossed, a short nudge settles back. Horizontal
- *   intent is never claimed — if a scene ever grows a horizontal surface,
- *   that surface owns it.
+ *   is claimed; from that moment the page follows the finger 1:1. On
+ *   release, ONE gesture earns AT MOST one scene of movement — a
+ *   decisive fling, a slow deliberate swipe past the distance
+ *   threshold, and a sustained drag that visually crossed several scene
+ *   tops while the finger was moving all resolve to the same single-
+ *   scene step; a short nudge settles back. This is deliberate: an
+ *   earlier version let a sustained drag earn up to three scenes at
+ *   once (via how many scene tops it crossed), which is exactly what
+ *   let one strong swipe skip ahead multiple sections instead of
+ *   advancing one at a time. Horizontal intent is never claimed — if a
+ *   scene ever grows a horizontal surface, that surface owns it.
+ *
+ *   LAST-SCENE HAND-OFF — leaving the reel from its final scene (e.g.
+ *   the photo album's last picture) uses the SAME one-gesture-one-step
+ *   threshold as every internal transition, never a separate, larger
+ *   distance requirement. An earlier version required a drag to travel
+ *   past 50% of the viewport specifically to leave the reel, which
+ *   silently re-settled a normal swipe back onto the same final scene —
+ *   the "stuck, have to swipe repeatedly" boundary bug.
  *
  *   NATIVE RESTS — scrollbar / keyboard rests can stop anywhere; an
  *   idle watcher (140ms of stillness) eases them onto the nearest whole
@@ -58,8 +84,14 @@ const SCENE_SELECTOR = "[data-reel-scene]";
 
 /** How long after a landing a wheel gesture is still ignored — one
  *  physical wheel burst (or a trackpad's momentum tail) pages exactly
- *  one scene, never two. */
-const WHEEL_SETTLE_MS = 200;
+ *  one scene, never two. Nudged 200ms → 350ms: a trackpad's momentum
+ *  tail after a strong swipe can keep emitting wheel deltas well past
+ *  200ms, and any of those that arrived just after the old, shorter
+ *  window closed would read as a brand-new gesture and page a second
+ *  scene — the "one strong scroll skips ahead" symptom for wheel/
+ *  trackpad input. Still short enough that back-to-back INTENTIONAL
+ *  scrolls never feel throttled. */
+const WHEEL_SETTLE_MS = 350;
 
 /** An exact cubic-bezier timing function, returned as `y(x)`. */
 function cubicBezier(x1: number, y1: number, x2: number, y2: number) {
@@ -269,9 +301,14 @@ export function useReelPager(armed: boolean): void {
       const g = readGeom();
       if (g.count < 1) return;
       const y = scrollPos();
-      // only inside the reel (at/above the album scene top) and past
-      // the very top of the document
-      if (y < 1 || y > g.lastTop + 1) return;
+      // only inside the reel and past the very top of the document. Was
+      // bounded to `g.lastTop + 1` — i.e. only up to the LAST scene's
+      // own top — which left native drift landing anywhere within the
+      // last scene's own body (past its top) uncorrected. Now that the
+      // reel runs the full document, "inside the reel" means anywhere
+      // up to the last scene's bottom, so a native rest is always eased
+      // onto an exact scene top no matter which scene it lands in.
+      if (y < 1 || y > g.lastTop + g.lastHeight + 1) return;
       const target = g.tops[nearestIndex(y, g.tops)];
       if (Math.abs(target - y) > 1) {
         // align with the SAME glide a gesture uses: a native rest (a
@@ -312,14 +349,16 @@ export function useReelPager(armed: boolean): void {
         if (k < g.count - 1) target = g.tops[k + 1];
       }
     } else {
-      // previous scene — engage while the reel still dominates the
-      // viewport (the album's top within its upper half), so a reader
-      // deep in the normal sections below is never yanked back
-      if (y <= g.lastTop + g.lastHeight * 0.5) {
+      // previous scene — engage anywhere within the reel. (This used to
+      // stop at "the album's top within its upper half" plus a special
+      // "partial hand-off, restore the last reel scene" branch for
+      // y past that point — both existed only because Venue/RSVP/
+      // Closing used to be plain document content below the reel, which
+      // no longer exists: the reel now runs the full document, so there
+      // is nothing left for either of those special cases to do.)
+      if (y <= g.lastTop + g.lastHeight) {
         const k = nearestIndex(y, g.tops);
-        if (y > g.lastTop + 2) {
-          target = g.lastTop; // partial hand-off → restore the album scene
-        } else if (Math.abs(y - g.tops[k]) < 2) {
+        if (Math.abs(y - g.tops[k]) < 2) {
           target = k > 0 ? g.tops[k - 1] : 0; // aligned → one scene back
         } else {
           target = g.tops[k]; // unaligned → settle on the nearest scene first
@@ -416,15 +455,19 @@ export function useReelPager(armed: boolean): void {
     const y0 = s.startScrollY;
     let canClaim = false;
     if (forward) {
-      // claim anywhere over the reel INCLUDING its final scene (the
-      // album's last photograph) — the release logic hands off past its
-      // midpoint, so an upward swipe on the last photograph can never
-      // trap the guest. Only a gesture starting below the reel is a
-      // native leave.
+      // claim anywhere over the reel INCLUDING its final scene (Closing)
+      // — the release logic hands off to `onTouchEnd`'s own bounds check
+      // rather than a second threshold, so an upward swipe on the last
+      // scene can never trap the guest. Only a gesture starting at the
+      // absolute end of the document has nothing left to claim.
       canClaim = y0 < g.lastTop + g.lastHeight;
     } else {
-      // going back up: only while the reel still dominates the viewport
-      canClaim = y0 > 1 && y0 <= g.lastTop + g.lastHeight * 0.5;
+      // going back up: the reel now runs the full document (Venue/RSVP/
+      // Closing are reel scenes too, not plain content below it), so a
+      // backward swipe is claimed anywhere within it — never restricted
+      // to "near the boundary" the way it had to be when those sections
+      // were normal, un-tagged document flow.
+      canClaim = y0 > 1 && y0 <= g.lastTop + g.lastHeight;
     }
     if (!canClaim) {
       dragRef.current = null; // let the browser own this drag entirely
@@ -505,31 +548,47 @@ export function useReelPager(armed: boolean): void {
     const y = scrollPos();
     const max = scrollMax();
 
-    // a drag that travelled past most of the final scene has left the
-    // reel — finish the hand-off cleanly at its bottom (the top of the
-    // normal sections) instead of snapping back
-    if (y >= g.lastTop + g.lastHeight * 0.5) {
-      pageTo(Math.min(max, g.lastTop + g.lastHeight));
-      return;
-    }
-
     const dt = Math.max(8, s.lastT - s.moveT);
     const velocity = Math.abs((s.lastY - s.moveY) / dt); // px per ms (approx.)
     const travelled = y - s.startScrollY;
     const vh = window.innerHeight || g.lastHeight;
 
+    // ONE gesture earns AT MOST one scene of movement — a fast fling, a
+    // slow deliberate swipe, and a drag that visually crossed several
+    // scene tops while the finger was still moving all resolve to the
+    // same ±1. (Previously a sustained drag could earn up to ±3 scenes
+    // via `s.crossings`, which is exactly what let one strong gesture
+    // skip 2–3 sections instead of advancing one at a time.)
     let delta = 0;
     if (velocity >= 0.55 && s.crossings === 0) {
       // decisive fling → exactly one scene
       delta = travelled > 0 ? 1 : -1;
     } else if (s.crossings !== 0) {
-      // sustained drag — it earned as many scenes as it crossed
-      delta = Math.max(-3, Math.min(3, s.crossings));
+      delta = s.crossings > 0 ? 1 : -1;
     } else if (Math.abs(travelled) >= vh * 0.14) {
       // slow, deliberate swipe past the threshold
       delta = travelled > 0 ? 1 : -1;
     }
-    const targetIdx = Math.max(0, Math.min(g.count - 1, s.startIndex + delta));
+
+    // FIX: leaving the reel from its LAST scene (the album's final
+    // photograph) used to require a separate, much bigger gesture (the
+    // drag had to travel past 50% of the viewport) than an ordinary
+    // internal transition (14%, or any decisive fling) — any swipe in
+    // between those two thresholds silently re-settled back onto the
+    // same last photograph, which is exactly the "stuck at the carousel
+    // boundary, have to swipe repeatedly" bug. The fix: compute the
+    // desired index with the SAME rule as every other transition above,
+    // and if that pushes past the reel's last scene, hand off to the
+    // normal document sections below (Venue) instead of clamping back —
+    // never a second gesture threshold, never a dead zone. Backward
+    // navigation at index 0 needs no equivalent case: there is nothing
+    // above the first scene, so clamping to 0 there is already correct.
+    const desiredIndex = s.startIndex + delta;
+    if (desiredIndex >= g.count) {
+      pageTo(Math.min(max, g.lastTop + g.lastHeight));
+      return;
+    }
+    const targetIdx = Math.max(0, Math.min(g.count - 1, desiredIndex));
     pageTo(g.tops[targetIdx]);
   };
 

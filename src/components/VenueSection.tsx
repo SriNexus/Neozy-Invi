@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { VenueData } from "../data/invitation";
 import { useActiveTheme } from "../data/useTheme";
 import { JharokhaArch, Divider, ThemeCorner } from "./decor/Ornaments";
+import ViewOnMapButton from "./ViewOnMapButton";
 
 function useInView<T extends HTMLElement>(threshold = 0.25) {
   const ref = useRef<T>(null);
@@ -45,8 +46,9 @@ export default function VenueSection({
 
   return (
     <section
-      className="relative w-full overflow-hidden"
-      style={{ minHeight: "92dvh", padding: "clamp(64px,12vw,110px) clamp(20px,5vw,40px)" }}
+      data-reel-scene
+      className="relative w-full overflow-hidden flex flex-col items-center justify-center"
+      style={{ height: "100dvh", padding: "clamp(24px,6vw,52px) clamp(20px,5vw,40px)" }}
     >
       {/* the section's artwork — full-bleed behind the content, moving
           with the section, with the warm-to-deep veil that keeps the
@@ -84,8 +86,8 @@ export default function VenueSection({
           className="font-sc"
           style={{
             color: hasImage ? "var(--gold-soft)" : "var(--gold-invite-dim)",
-            // global floor: never below the parent-name baseline (13px)
-            fontSize: "clamp(13px,3vw,15px)",
+            // kept above the parent-name baseline (13px), not just at it
+            fontSize: "clamp(14px,3vw,16px)",
             letterSpacing: "0.4em",
             textTransform: "uppercase",
           }}
@@ -95,8 +97,8 @@ export default function VenueSection({
 
         {/* framed architectural composition */}
         <div
-          className="relative mx-auto mt-8"
-          style={{ maxWidth: "min(80vw, 440px)", padding: "clamp(24px,6vw,44px) clamp(20px,5vw,40px)" }}
+          className="relative mx-auto mt-6"
+          style={{ maxWidth: "min(80vw, 440px)", padding: "clamp(16px,4vw,32px) clamp(20px,5vw,40px)" }}
         >
           <div
             className="absolute inset-0"
@@ -119,8 +121,8 @@ export default function VenueSection({
           ))}
 
           {!hasImage && layout === "jharokha" && (
-            <div className="flex justify-center mb-3" style={{ color: "var(--gold-invite)" }}>
-              <JharokhaArch width={132} style={{ opacity: 0.9 }} />
+            <div className="flex justify-center mb-2" style={{ color: "var(--gold-invite)" }}>
+              <JharokhaArch width={78} style={{ opacity: 0.9 }} />
             </div>
           )}
 
@@ -129,7 +131,7 @@ export default function VenueSection({
               fontFamily: "var(--font-display)",
               fontStyle: "italic",
               color: hasImage ? "var(--ivory)" : "var(--text-primary)",
-              fontSize: "clamp(26px,7vw,40px)",
+              fontSize: "clamp(24px,6.4vw,36px)",
               fontWeight: 500,
               lineHeight: 1.15,
             }}
@@ -139,28 +141,28 @@ export default function VenueSection({
 
           <Divider
             emblem={theme.motifs.divider}
-            width={120}
-            className="my-4"
+            width={110}
+            className="my-3"
             style={{ color: hasImage ? "var(--gold-soft)" : "var(--gold-invite)" }}
           />
 
           <p
             style={{
               color: hasImage ? "var(--ivory-dim)" : "var(--text-secondary)",
-              fontSize: "clamp(13px,3.4vw,15px)",
+              fontSize: "clamp(14px,3.4vw,15.5px)",
               fontStyle: "italic",
-              lineHeight: 1.7,
+              lineHeight: 1.55,
             }}
           >
             {venue.address}
           </p>
           {venue.time && (
             <p
-              className="font-sc mt-3"
+              className="font-sc mt-2"
               style={{
                 color: hasImage ? "var(--gold-soft)" : "var(--gold-invite-dim)",
-                // global floor: never below the parent-name baseline (13px)
-                fontSize: "clamp(13px,2.8vw,14.5px)",
+                // kept above the parent-name baseline (13px), not just at it
+                fontSize: "clamp(14px,2.8vw,15.5px)",
                 letterSpacing: "0.2em",
                 textTransform: "uppercase",
               }}
@@ -171,30 +173,12 @@ export default function VenueSection({
         </div>
 
         {(venue.directionsUrl || venue.mapUrl) && (
-          <a
-            href={venue.directionsUrl || venue.mapUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 mt-8 px-7 py-3"
-            style={{
-              border: `1px solid ${hasImage ? "rgba(227,205,154,0.5)" : "var(--gold-invite)"}`,
-              color: hasImage ? "var(--gold-soft)" : "var(--gold-invite)",
-              fontFamily: "var(--font-sc)",
-              // global floor: never below the parent-name baseline (13px)
-              fontSize: "clamp(13px,2.8vw,14.5px)",
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              textDecoration: "none",
-              background: hasImage ? "rgba(20,14,8,0.25)" : "rgba(252,249,242,0.5)",
-              backdropFilter: "blur(4px)",
-            }}
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
-              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" />
-              <circle cx="12" cy="9" r="2.5" />
-            </svg>
-            Find the way
-          </a>
+          <div className="mt-6">
+            <ViewOnMapButton
+              href={venue.directionsUrl || venue.mapUrl || "#"}
+              ariaLabel={`View ${venue.name} on Google Maps`}
+            />
+          </div>
         )}
       </div>
     </section>

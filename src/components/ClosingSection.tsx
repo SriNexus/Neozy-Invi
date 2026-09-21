@@ -1,7 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 import type { CoupleData, ClosingData } from "../data/invitation";
 import { useActiveTheme } from "../data/useTheme";
-import { Divider, AmpersandOrnament, JharokhaArch } from "./decor/Ornaments";
+import { Divider, AmpersandOrnament, JharokhaArch, HairRule } from "./decor/Ornaments";
+
+/* the couple's names here — the invitation's literal closing words —
+   previously sat in flat `--text-primary` ink, the one remaining place
+   in the whole invitation where the names weren't given the same
+   dimensional gold the couple scene, the welcome text and the Save the
+   Date all use. This is the SAME light gold-gradient recipe already
+   used for "Welcome To Our" in CoupleIntro.tsx — reused rather than
+   invented, so the closing page reads as the same hand finishing the
+   same book, restrained enough for the italic display serif here
+   (the heavier, stepped-extrusion recipe is reserved for hero moments
+   like the couple's own Telma wordmark and the Save the Date numeral). */
+const CLOSING_NAME_GRADIENT: React.CSSProperties = {
+  background: "linear-gradient(180deg, #f3e3c0 0%, #d9bd72 45%, #a8863c 100%)",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  color: "transparent",
+  filter:
+    "drop-shadow(0 1px 0 rgba(255,250,236,0.45)) drop-shadow(0 2px 4px rgba(60,42,16,0.32))",
+};
 
 function useInView<T extends HTMLElement>(threshold = 0.25) {
   const ref = useRef<T>(null);
@@ -43,8 +62,9 @@ export default function ClosingSection({
 
   return (
     <section
+      data-reel-scene
       className="relative w-full overflow-hidden flex items-center justify-center"
-      style={{ minHeight: "96dvh", padding: "clamp(72px,15vw,120px) clamp(24px,6vw,48px)" }}
+      style={{ height: "100dvh", padding: "clamp(28px,6vw,52px) clamp(24px,6vw,48px)" }}
     >
       {/* The closing page's artwork — the invitation's COVER, closing the
           book it opened. Full-bleed behind the farewell and moving with
@@ -76,52 +96,71 @@ export default function ClosingSection({
       )}
 
       <div ref={ref} className="relative z-10 text-center flex flex-col items-center" style={{ maxWidth: 420 }}>
-        <div style={{ ...step(0), color: "var(--gold-invite)" }}>
-          <JharokhaArch width={96} style={{ opacity: 0.7 }} />
+        {/* a small kicker announcing this as the invitation's own closing
+            page, the same "tracked label" voice every other section
+            opens with (The Venue / Our Story / The Celebrations) — the
+            one thing missing before, which made the page read as simply
+            "another section" rather than a deliberate final page. */}
+        <span
+          className="font-sc"
+          style={{
+            ...step(0),
+            color: "var(--gold-invite-dim)",
+            fontSize: "clamp(14px, 3vw, 16px)",
+            letterSpacing: "0.4em",
+            marginLeft: "0.4em",
+            textTransform: "uppercase",
+          }}
+        >
+          With Love
+        </span>
+
+        <div className="mt-3" style={{ ...step(1), color: "var(--gold-invite)" }}>
+          <JharokhaArch width={68} style={{ opacity: 0.7 }} />
         </div>
 
         <h2
-          className="mt-6"
+          className="mt-4"
           style={{
             fontFamily: "var(--font-display)",
             fontStyle: "italic",
-            color: "var(--text-primary)",
-            fontSize: "clamp(32px,9vw,52px)",
+            fontSize: "clamp(30px,8.4vw,46px)",
             fontWeight: 500,
             lineHeight: 1.12,
-            ...step(1),
+            ...CLOSING_NAME_GRADIENT,
+            ...step(2),
           }}
         >
           {couple.name1}
         </h2>
-        <div className="my-2" style={step(2)}>
-          <AmpersandOrnament size={20} />
+        <div className="my-1" style={{ color: "var(--gold-invite)", ...step(2) }}>
+          <AmpersandOrnament size={18} />
         </div>
         <h2
           style={{
             fontFamily: "var(--font-display)",
             fontStyle: "italic",
-            color: "var(--text-primary)",
-            fontSize: "clamp(32px,9vw,52px)",
+            fontSize: "clamp(30px,8.4vw,46px)",
             fontWeight: 500,
             lineHeight: 1.12,
-            ...step(2),
+            ...CLOSING_NAME_GRADIENT,
+            ...step(3),
           }}
         >
           {couple.name2}
         </h2>
 
-        <Divider emblem={theme.motifs.divider} width={150} className="my-8" style={step(3)} />
+        <Divider emblem={theme.motifs.divider} width={130} className="my-4" style={step(4)} />
 
         <p
           style={{
             fontFamily: "var(--font-display)",
             fontStyle: "italic",
             color: "var(--text-secondary)",
-            fontSize: "clamp(15px,4vw,19px)",
-            lineHeight: 1.75,
+            fontSize: "clamp(15px,3.6vw,18px)",
+            lineHeight: 1.6,
             maxWidth: 340,
-            ...step(3),
+            ...step(4),
           }}
         >
           {closing.message}
@@ -129,19 +168,27 @@ export default function ClosingSection({
 
         {closing.familyMessage && (
           <p
-            className="font-sc mt-8"
+            className="font-sc mt-4"
             style={{
               color: "var(--gold-invite-dim)",
-              // global floor: never below the parent-name baseline (13px)
-              fontSize: "clamp(13px,2.8vw,14.5px)",
+              // kept above the parent-name baseline (13px), not just at it
+              fontSize: "clamp(14px,2.8vw,15px)",
               letterSpacing: "0.14em",
               textTransform: "uppercase",
-              ...step(4),
+              ...step(5),
             }}
           >
             {closing.familyMessage}
           </p>
         )}
+
+        {/* the invitation's own last mark — a single small hairline with
+            a diamond node, the visual "full stop" after the last word.
+            Restrained on purpose: this closes the book, it doesn't open
+            a new section. */}
+        <div className="mt-5" style={{ ...step(6), opacity: 0.6 }}>
+          <HairRule width={56} node="diamond" />
+        </div>
       </div>
     </section>
   );

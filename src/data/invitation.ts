@@ -18,15 +18,6 @@ export interface CoupleData {
   brideParents?: string;
   /** Parent line under the groom's name (RIGHT), e.g. "S/o Mr. & Mrs. Sharma" */
   groomParents?: string;
-  /** Opening line above the names, e.g. "Together With Our Families" */
-  header?: string;
-  /** Elegant script accent line on the couple card, e.g. "are getting married" */
-  scriptAccent?: string;
-  /** One short supporting invitation line, e.g. "request the pleasure of your company" */
-  inviteLine?: string;
-  /** Body text lines below the names */
-  body?: string[];
-  tagline?: string;
 }
 
 export interface WeddingDate {
@@ -46,15 +37,13 @@ export interface EventData {
   name: string;
   /** ISO date string */
   date: string;
-  /** Display time */
-  time: string;
+  /** Display time — optional: an event whose exact time hasn't been
+   *  confirmed (e.g. a wedding ceremony still being finalized) should
+   *  omit this rather than carry a guessed/placeholder value; `EventScene`
+   *  simply doesn't render the time line when it's absent. */
+  time?: string;
   venue: string;
   address: string;
-  description?: string;
-  /** Public URL or path */
-  image?: string;
-  /** Emoji or short motif (legacy — prefer `motif`) */
-  icon?: string;
   /**
    * Decorative motif key that selects a hand-drawn SVG emblem for the
    * event (no emoji). One of: mehendi | haldi | sangeet | wedding |
@@ -149,11 +138,6 @@ export const invitation: InvitationData = {
     name2: "Gunjan",
     brideParents: "D/o Mr. & Mrs. Verma",
     groomParents: "S/o Mr. & Mrs. Chaudhary",
-    header: "Together with their families",
-    scriptAccent: "are getting married",
-    inviteLine: "request the pleasure of your company as they celebrate their wedding",
-    body: [],
-    tagline: "Two souls, one story",
   },
   wedding: {
     date: "2026-12-04",
@@ -161,37 +145,40 @@ export const invitation: InvitationData = {
     displayDate: "Friday, 4th December",
     displayVenue: "Bengaluru \u00B7 India",
   },
+  // The official wedding-week schedule — this is the single source of
+  // truth for every date/time shown in the Events section. Mehendi and
+  // Sangeet fall the evening before; Haldi, the Wedding itself, and the
+  // Reception all fall on the wedding day, 4 December 2026. The Wedding
+  // ceremony's own exact time has not been confirmed yet, so `time` is
+  // deliberately omitted rather than guessed — see `EventData.time`.
   events: [
     {
       id: "mehendi",
       name: "Mehendi",
-      date: "2026-12-10",
-      time: "4:00 PM",
+      date: "2026-12-03",
+      time: "2:00 PM",
       venue: "The Grand Palace",
       address: "MG Road, Bengaluru",
-      description: "Let the henna tell our love story in shades of gold and crimson.",
       motif: "mehendi",
       directionsUrl: "https://maps.google.com/?q=MG+Road+Bengaluru",
     },
     {
       id: "sangeet",
       name: "Sangeet",
-      date: "2026-12-11",
-      time: "7:00 PM",
+      date: "2026-12-03",
+      time: "4:00 PM",
       venue: "The Grand Palace",
       address: "MG Road, Bengaluru",
-      description: "An evening of music, dance, and celebrations under the stars.",
       motif: "sangeet",
       directionsUrl: "https://maps.google.com/?q=MG+Road+Bengaluru",
     },
     {
       id: "haldi",
       name: "Haldi",
-      date: "2026-12-12",
-      time: "9:00 AM",
+      date: "2026-12-04",
+      time: "12:00 PM",
       venue: "The Grand Palace",
       address: "MG Road, Bengaluru",
-      description: "A splash of sunshine to bless the beginning of our new journey.",
       motif: "haldi",
       directionsUrl: "https://maps.google.com/?q=MG+Road+Bengaluru",
     },
@@ -199,21 +186,18 @@ export const invitation: InvitationData = {
       id: "wedding",
       name: "Wedding",
       date: "2026-12-04",
-      time: "6:00 PM",
       venue: "The Grand Palace",
       address: "MG Road, Bengaluru",
-      description: "The moment we've been waiting for — when two hearts become one.",
       motif: "wedding",
       directionsUrl: "https://maps.google.com/?q=MG+Road+Bengaluru",
     },
     {
       id: "reception",
       name: "Reception",
-      date: "2026-12-12",
-      time: "7:00 PM",
+      date: "2026-12-04",
+      time: "6:00 PM",
       venue: "The Grand Palace",
       address: "MG Road, Bengaluru",
-      description: "Dine, dance, and celebrate with us as we begin our forever.",
       motif: "reception",
       directionsUrl: "https://maps.google.com/?q=MG+Road+Bengaluru",
     },

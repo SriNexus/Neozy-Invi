@@ -211,95 +211,6 @@ body {
   }
 }
 
-/* ─── Text Reveal ─── */
-.reveal-char {
-  display: inline-block;
-  opacity: 0;
-  transform: translateY(6px);
-  filter: blur(3px);
-  will-change: opacity, transform, filter;
-}
-
-.reveal-line {
-  opacity: 0;
-  transform: translateY(10px);
-  filter: blur(2px);
-  will-change: opacity, transform, filter;
-}
-
-@keyframes charReveal {
-  0% {
-    opacity: 0;
-    transform: translateY(6px);
-    filter: blur(3px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-}
-
-@keyframes lineReveal {
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
-    filter: blur(2px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-    filter: blur(0);
-  }
-}
-
-/* ─── Card Entry ─── */
-@keyframes cardEntry {
-  0% {
-    opacity: 0;
-    transform: scale(0.97) translateY(8px);
-    filter: blur(1px);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-    filter: blur(0);
-  }
-}
-
-/* ─── Border Illumination ─── */
-@keyframes borderGlow {
-  0% { opacity: 0; }
-  50% { opacity: 0.5; }
-  100% { opacity: 0.25; }
-}
-
-/* ─── Ornamental shimmer sweep ─── */
-@keyframes shimmerSweep {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-/* ─── Background atmosphere drift ─── */
-@keyframes atmosphereDrift {
-  0% { transform: scale(1) translate3d(0, 0, 0); }
-  33% { transform: scale(1.01) translate3d(-0.3%, -0.2%, 0); }
-  66% { transform: scale(1.005) translate3d(0.2%, 0.1%, 0); }
-  100% { transform: scale(1) translate3d(0, 0, 0); }
-}
-
-/* ─── Intro → Card resolve ─── */
-@keyframes introBloom {
-  0% { opacity: 0; transform: scale(0.6); }
-  35% { opacity: 1; }
-  100% { opacity: 0; transform: scale(1.9); }
-}
-
-@keyframes introRing {
-  0% { opacity: 0.7; transform: scale(1); }
-  100% { opacity: 0; transform: scale(9); }
-}
-
 /* ─── Scratch cover surface (the painted PNG canvas) ─── */
 .scratch-surface {
   touch-action: none;
@@ -328,131 +239,34 @@ body {
   }
 }
 
-.animate-reveal-pop {
-  animation: revealPop 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+/* ─── View on Map — a premium raised-card button, not a text link ───
+   Rest: slightly raised (its own box-shadow, set inline in
+   ViewOnMapButton.tsx). Hover: a touch more lift and a softer, wider
+   shadow. Active: a small, realistic press-down — less lift, a
+   tighter shadow — so tapping it actually feels like pressing a real
+   card, not toggling a colour. Restrained on purpose: no scale, no
+   colour change, no glow. */
+.view-on-map-button {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-@keyframes revealGlow {
-  0% {
-    box-shadow: 0 0 0 0 rgba(184, 148, 63, 0);
-  }
-  50% {
-    box-shadow: 0 0 20px 4px rgba(184, 148, 63, 0.3);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(184, 148, 63, 0);
-  }
+.view-on-map-button:hover,
+.view-on-map-button:focus-visible {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -2px 3px rgba(120, 92, 45, 0.1),
+    0 3px 6px rgba(60, 42, 16, 0.16),
+    0 12px 22px rgba(60, 42, 16, 0.26);
 }
 
-.animate-reveal-glow {
-  animation: revealGlow 1s ease both;
-}
-
-@keyframes fadeSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-slide-up {
-  animation: fadeSlideUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-/* ─── Date settles directly onto the artwork (no card) ───
-   A soft rise + a whisper of scale, nothing that "pops". */
-@keyframes dateSettle {
-  from {
-    opacity: 0;
-    transform: translateY(10px) scale(0.965);
-    filter: blur(3px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    filter: blur(0);
-  }
-}
-
-.animate-date-settle {
-  animation: dateSettle 1.15s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-/* ─── Existing Keyframes ─── */
-@keyframes breathe {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 0.9; transform: scale(1.015); }
-}
-
-@keyframes driftSlow {
-  0% { transform: translate3d(0,0,0) scale(1.02); }
-  50% { transform: translate3d(-1%, -0.6%, 0) scale(1.04); }
-  100% { transform: translate3d(0,0,0) scale(1.02); }
-}
-
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-@keyframes pulseDot {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 1; }
-}
-
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(14px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes ringPulse {
-  0% { transform: scale(1); opacity: 0.55; }
-  100% { transform: scale(1.9); opacity: 0; }
-}
-
-/* ─── Utility Classes ─── */
-.animate-breathe { animation: breathe 6s ease-in-out infinite; }
-.animate-drift-slow { animation: driftSlow 18s ease-in-out infinite; }
-.animate-fade-up { animation: fadeUp 1.1s cubic-bezier(0.16, 1, 0.3, 1) both; }
-
-.animate-card-entry {
-  animation: cardEntry 1s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.animate-char-reveal {
-  animation: charReveal 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.animate-line-reveal {
-  animation: lineReveal 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.animate-border-glow {
-  animation: borderGlow 1.5s ease both;
-}
-
-.animate-atmosphere {
-  animation: atmosphereDrift 30s ease-in-out infinite;
-}
-
-/* ─── Directions action — a refined printed-ticket link ─── */
-.directions-action {
-  transition: border-color 0.3s ease, color 0.3s ease, background 0.3s ease;
-}
-
-.directions-action:hover,
-.directions-action:focus-visible {
-  border-color: rgba(184, 148, 63, 0.95);
-  color: var(--gold-invite-dim);
-  background: rgba(184, 148, 63, 0.08);
-}
-
-.directions-action:active {
-  background: rgba(184, 148, 63, 0.14);
+.view-on-map-button:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 2px rgba(120, 92, 45, 0.12),
+    0 1px 2px rgba(60, 42, 16, 0.12),
+    0 3px 6px rgba(60, 42, 16, 0.16);
 }
 
 /* ─── Celebration Particles ─── */
@@ -563,31 +377,6 @@ body {
 
 /* ─── Prefers Reduced Motion ─── */
 @media (prefers-reduced-motion: reduce) {
-  .reveal-char,
-  .reveal-line {
-    opacity: 1 !important;
-    transform: none !important;
-    filter: none !important;
-    animation: none !important;
-  }
-
-  .animate-card-entry,
-  .animate-char-reveal,
-  .animate-line-reveal,
-  .animate-border-glow,
-  .animate-atmosphere,
-  .animate-breathe,
-  .animate-drift-slow,
-  .animate-fade-up,
-  .animate-reveal-pop,
-  .animate-reveal-glow,
-  .animate-fade-slide-up {
-    animation: none !important;
-    opacity: 1 !important;
-    transform: none !important;
-    filter: none !important;
-  }
-
   .ambient-particle {
     display: none !important;
   }
@@ -595,41 +384,6 @@ body {
   .scratch-surface {
     cursor: default !important;
   }
-
-  .celebration-particle {
-    display: none !important;
-  }
-}
-
-/* ─── Section Reveal Animations ─── */
-@keyframes sectionFadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes sectionScaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.animate-section-fade-up {
-  animation: sectionFadeUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.animate-section-scale-in {
-  animation: sectionScaleIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 /* ─── Admin Panel Styles ─── */

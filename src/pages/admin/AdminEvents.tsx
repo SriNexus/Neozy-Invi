@@ -5,7 +5,7 @@ import type { EventData } from "../../data/invitation";
 
 /**
  * Events management — full CRUD for wedding events. Supports unlimited
- * events with date, time, venue, description, icon, and directions.
+ * events with date, time, venue, motif, and directions.
  */
 
 export default function AdminEvents() {
@@ -20,7 +20,6 @@ export default function AdminEvents() {
     time: "",
     venue: invitation.venue.name,
     address: invitation.venue.address,
-    description: "",
     motif: "",
     directionsUrl: invitation.venue.directionsUrl,
   });
@@ -128,10 +127,10 @@ export default function AdminEvents() {
                 className="admin-input"
               />
             </Field>
-            <Field label="Time">
+            <Field label="Time (optional — leave blank if not yet confirmed)">
               <input
-                value={editing.time}
-                onChange={(e) => setEditing({ ...editing, time: e.target.value })}
+                value={editing.time || ""}
+                onChange={(e) => setEditing({ ...editing, time: e.target.value || undefined })}
                 placeholder="4:00 PM"
                 className="admin-input"
               />
@@ -148,14 +147,6 @@ export default function AdminEvents() {
             <input
               value={editing.address}
               onChange={(e) => setEditing({ ...editing, address: e.target.value })}
-              className="admin-input"
-            />
-          </Field>
-          <Field label="Description">
-            <textarea
-              value={editing.description || ""}
-              onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-              rows={2}
               className="admin-input"
             />
           </Field>
