@@ -132,8 +132,9 @@ export default function ClosingSection({
             className="font-sc mt-8"
             style={{
               color: "var(--gold-invite-dim)",
-              fontSize: "clamp(10px,2.8vw,12px)",
-              letterSpacing: "0.22em",
+              // global floor: never below the parent-name baseline (13px)
+              fontSize: "clamp(13px,2.8vw,14.5px)",
+              letterSpacing: "0.14em",
               textTransform: "uppercase",
               ...step(4),
             }}

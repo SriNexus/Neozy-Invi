@@ -116,7 +116,10 @@ export default function ScrollCue({
             fontFamily: "var(--font-invite-label)",
             fontWeight: 600,
             color: "var(--ivory, #f7f2e6)",
-            fontSize: "clamp(9.5px, 2.5vw, 11.5px)",
+            // global floor: no readable text anywhere below the
+            // parent-name baseline (13px) — this label used to sit
+            // under it at the narrowest widths
+            fontSize: "clamp(13px, 3vw, 15px)",
             letterSpacing: "0.32em",
             // tracking compensation — the established label pattern
             marginLeft: "0.32em",

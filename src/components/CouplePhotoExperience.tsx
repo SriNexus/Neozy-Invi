@@ -116,8 +116,9 @@ export default function CouplePhotoExperience({
             className="font-sc"
             style={{
               color: "var(--gold-invite-dim)",
-              fontSize: "clamp(10px, 2.6vw, 12px)",
-              letterSpacing: "0.45em",
+              // global floor: never below the parent-name baseline (13px)
+              fontSize: "clamp(13px, 3vw, 15px)",
+              letterSpacing: "0.4em",
               textTransform: "uppercase",
             }}
           >
@@ -263,9 +264,10 @@ function AlbumLeaf({
             className="font-sc"
             style={{
               color: "var(--gold-invite-dim)",
-              fontSize: "clamp(10px, 2.6vw, 12px)",
-              letterSpacing: "0.5em",
-              marginLeft: "0.5em",
+              // global floor: never below the parent-name baseline (13px)
+              fontSize: "clamp(13px, 3vw, 15px)",
+              letterSpacing: "0.4em",
+              marginLeft: "0.4em",
               textTransform: "uppercase",
             }}
           >
@@ -282,9 +284,10 @@ function AlbumLeaf({
               aria-label={`Photograph ${index + 1} of ${total}`}
               style={{
                 color: "var(--gold-invite)",
-                fontSize: "clamp(9px, 2.4vw, 10.5px)",
+                // global floor: never below the parent-name baseline (13px)
+                fontSize: "clamp(13px, 2.6vw, 14px)",
                 fontWeight: 600,
-                letterSpacing: "0.3em",
+                letterSpacing: "0.24em",
                 marginLeft: "0.3em",
                 fontVariantNumeric: "tabular-nums",
               }}

@@ -33,7 +33,7 @@ import ScrollCue from "./ScrollCue";
  * composited directly onto the film with no box behind them — the exact
  * distinction the project asked for: remove the card, keep the couple.
  *
- * THE WELCOME TEXT (9–12s in, 12–14s out) is a SEPARATE, SHORTER moment
+ * THE WELCOME TEXT (9–13s in, 13–14.3s out) is a SEPARATE, SHORTER moment
  * that comes first — a short cinematic welcome phrase, never the couple's
  * names (their names get their own, better-lit moment at 17s+). It is
  * hard-confined to the middle 20% of the viewport height (30–50dvh) and
@@ -78,7 +78,11 @@ type Step = (typeof STEPS)[number];
  *  stops. */
 const CUE: Record<Exclude<Step, "preroll" | "arrow">, number> = {
   textIn: 9, // the illustrated couple's blank sky is stable ~9–13s
-  textOut: 12, // starts fading out well before the ~13–17s crossfade
+  // pushed back 12 → 13 (a straight +1s of fully-opaque reading time,
+  // per an explicit "it disappears too quickly" correction) — still well
+  // clear of the ~13–17s crossfade and the 17.5s brideName cue, so
+  // nothing downstream is delayed
+  textOut: 13,
   brideName: 17.5, // the arch has resolved; a beat of pure film, then the name
   brideParent: 18.25,
   hands: 18.75,
@@ -247,128 +251,181 @@ export default function CoupleIntro({
         }}
       />
 
-      {/* a very subtle, uniform dim — NOT a blackout, NOT a card
-          background — that fades in the instant playback actually stops
-          (the same `arrow` cue), so the held final frame lowers just
-          enough for the scroll chevron to read clearly against it. The
-          film itself is still what's visible underneath; nothing new is
-          introduced behind the arrow. */}
+      {/* a subtle, uniform dim — NOT a blackout, NOT a card background —
+          that fades in the instant playback actually stops (the same
+          `arrow` cue), so the held final frame lowers just enough for
+          the scroll chevron to read clearly against it. Nudged from
+          0.22 → 0.30 (still restrained, no visible "band" or vignette
+          shape) after the arrow was reported as merging into the film's
+          own pale ending frame. The film itself is still what's visible
+          underneath; nothing new is introduced behind the arrow. */}
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
           zIndex: 20,
-          background: "rgba(10,8,7,0.22)",
+          background: "rgba(10,8,7,0.3)",
           opacity: reached("arrow") ? 1 : 0,
           transition: "opacity 0.9s ease",
         }}
       />
 
-      {/* ── THE WELCOME TEXT — 9–12s in, 12–14s out, in the illustrated
+      {/* ── THE WELCOME TEXT — 9–13s in, 13–14.3s out, in the illustrated
           couple's own blank sky (measured at ~17%–43% of frame height;
-          see the file header). Hard-confined to a 20dvh band starting at
-          30dvh so it can never drift into the top florals or graze the
-          couple's heads (which begin ~43%), regardless of viewport or
-          content length — the band clips (`overflow: hidden`) rather
-          than ever let content escape it.
+          see the file header). Hard-confined to a 20dvh band, now
+          starting at 27dvh instead of 30dvh — a straight ~10% upward
+          shift of the whole composition (per an explicit correction),
+          not a redesign of the band: still fully inside the couple's
+          blank sky and still clear of the top florals above and the
+          couple's heads below (~43%), on every viewport. The band clips
+          (`overflow: hidden`) rather than ever let content escape it.
+          `paddingTop` was pulled back (1.2dvh → 0.3dvh) and every
+          inter-tier gap opened up ~10% in an earlier pass, per a "use
+          more of the band, don't leave it empty above a cramped cluster"
+          correction — the composition genuinely occupies the band rather
+          than sitting compressed near its middle.
 
           THREE tiers, building to the one word that has to land —
           "WEDDING" — rather than one flat line: a tiny ceremonial line,
-          a slightly larger intro phrase, then the hero word itself in
-          the dimensional gold foil. An earlier pass's "We Welcome You"
-          never actually said the word "wedding" — a guest could read it
-          without knowing what they were being welcomed TO; this fixes
-          that directly. Still a SEPARATE, SHORTER moment from the couple
-          content below — never the couple's own names (those get their
-          own, better-lit moment once the arch has resolved, at 17s+).
-          No box, no pill, no glassmorphism, no glow — just ink, weight
-          and light, the way a title card in a wedding film would be
-          set. */}
+          a slightly larger intro phrase, then the hero word itself. An
+          earlier pass's "We Welcome You" never actually said the word
+          "wedding" — a guest could read it without knowing what they
+          were being welcomed TO; this fixed that. A LATER pass then
+          found the whole thing read as flat, generic "Word-document"
+          text — fixed by giving every tier real dimensional ink (below),
+          not just the hero word, and by moving the hero word OFF
+          `--font-invite-label` (this project's own SUPPORTING/caption
+          voice — never meant to carry a hero moment) onto `--font-couple`
+          (Fraunces, the IDENTITY voice already used for the date's own
+          hero numeral), so "WEDDING" reads as a genuine display headline
+          rather than a blown-up caption. Still a SEPARATE, SHORTER
+          moment from the couple content below — never the couple's own
+          names. No box, no pill, no glassmorphism, no glow — just ink,
+          weight and light, the way a title card in a wedding film would
+          be set. */}
       <div
         aria-hidden="true"
         className="absolute inset-x-0 flex flex-col items-center pointer-events-none"
         style={{
-          top: "30dvh",
+          top: "27dvh",
           height: "20dvh",
-          paddingTop: "1.2dvh",
+          paddingTop: "0.3dvh",
           zIndex: 8,
           overflow: "hidden",
           opacity: textShown ? 1 : 0,
+          // the container's own fade is now a quick "stage lighting up"
+          // (was a slow 1.3s fade+scale on entry) — the per-letter type-on
+          // below (see TypeOnPhrase) is now what actually reads as the
+          // entrance, so the container itself should not visibly compete
+          // with it. The 1.3s fade+scale is kept, unchanged, for the EXIT
+          // only, since that still fades the whole already-written phrase
+          // away as one piece.
           transform: textShown ? "translateY(0) scale(1)" : "translateY(10px) scale(0.985)",
           transition: reduceMotion
             ? "none"
             : reached("textOut")
               ? `opacity 1.3s ${EASE}, transform 1.3s ${EASE}`
-              : `opacity 1.3s ${EASE} 0.1s, transform 1.3s ${EASE} 0.1s`,
+              : "opacity 0.4s ease, transform 0.4s ease",
         }}
       >
-        {/* tier 1 — the ceremonial line, the same tracked "label" voice
-            as ScrollCue/Countdown elsewhere in the invitation */}
-        <span
-          style={{
+        {/* tier 1 — the ceremonial line: the tracked "label" voice, with
+            a genuine two-step engraved shadow (a bright hairline catching
+            light on the upper edge, a close warm crevice below it)
+            instead of one flat offset shadow — the same restrained
+            "carved into paper" technique the invitation's parent lines
+            and labels use. Now typed on letter-by-letter (see
+            TypeOnPhrase below) instead of fading in as one flat block —
+            the SAME hand-writing technique as GUNJAN/ABHAY below, per an
+            explicit "make it read like someone is writing" correction. */}
+        <TypeOnPhrase
+          text="With Joy In Our Hearts"
+          revealed={reached("textIn")}
+          reduceMotion={reduceMotion}
+          wrapperStyle={{
             fontFamily: "var(--font-invite-label)",
             fontWeight: 600,
-            color: "var(--gold-invite-dim)",
-            fontSize: "clamp(12px, 3.3vw, 15px)",
+            fontSize: "clamp(13px, 3.6vw, 16px)",
             letterSpacing: "0.3em",
             marginLeft: "0.3em",
             textTransform: "uppercase",
-            textShadow: "0 1px 2px rgba(24,16,8,0.32), 0 1px 0 rgba(255,252,244,0.4)",
           }}
-        >
-          With Joy In Our Hearts
-        </span>
+          letterStyle={{
+            color: "var(--gold-invite-dim)",
+            textShadow:
+              "0 1px 0 rgba(255,250,236,0.4), 0 1.5px 3px rgba(24,16,8,0.36)",
+          }}
+        />
 
-        {/* tier 2 — the intro phrase: still the tracked label voice, a
-            notch larger and richer than tier 1, but plainer than the
-            hero word below it — a deliberate middle step in the build,
-            not its own competing focal point. */}
-        <span
-          style={{
-            marginTop: "clamp(4px, 0.9dvh, 8px)",
+        {/* tier 2 — the intro phrase: a deliberate middle step, on a
+            light gold gradient fill of its own (a subtler version of the
+            hero's) instead of a flat solid colour, so the build from
+            tier 1 → tier 2 → tier 3 reads as ONE dimensional family
+            gaining weight and depth, not "one nice word after two plain
+            ones". Also typed on now, continuing the SAME stagger clock
+            as tier 1 (each tier runs its own independent 0→700ms
+            sequence, since each has its own `revealed` cue moment). */}
+        <TypeOnPhrase
+          text="Welcome To Our"
+          revealed={reached("textIn")}
+          reduceMotion={reduceMotion}
+          wrapperStyle={{
+            marginTop: "clamp(9px, 2vh, 15px)",
             fontFamily: "var(--font-invite-label)",
             fontWeight: 600,
-            color: "var(--gold-invite)",
-            fontSize: "clamp(17px, 4.6vw, 23px)",
-            letterSpacing: "0.14em",
-            marginLeft: "0.14em",
+            fontSize: "clamp(18px, 5vw, 25px)",
+            letterSpacing: "0.13em",
+            marginLeft: "0.13em",
             textTransform: "uppercase",
-            textShadow: "0 1px 2px rgba(24,16,8,0.3), 0 1px 0 rgba(255,252,244,0.35)",
           }}
-        >
-          Welcome To Our
-        </span>
-
-        {/* tier 3 — THE HERO WORD. A vertical light→dark gold gradient
-            fill (the "raised metal catching light" read) plus three
-            stacked drop-shadows — a bright hairline top edge, a close
-            warm-dark crevice, and a wider soft shadow for separation
-            from the busy film beneath. No backdrop-filter, no glow, no
-            outline — the same restrained language the Countdown
-            numerals later in this flow use. Substantially larger than
-            either line above it: this is the word the whole moment
-            exists to land. */}
-        <span
-          style={{
-            marginTop: "clamp(2px, 0.6dvh, 6px)",
-            fontFamily: "var(--font-invite-label)",
-            fontWeight: 700,
-            fontSize: "clamp(32px, 10vw, 48px)",
-            lineHeight: 1.1,
-            letterSpacing: "0.1em",
-            marginLeft: "0.1em",
-            textTransform: "uppercase",
-            textAlign: "center",
+          letterStyle={{
             background:
-              "linear-gradient(180deg, #f6e6b8 0%, #d9bd72 26%, #b8943f 54%, #8c6f32 80%, #a8863c 100%)",
+              "linear-gradient(180deg, #f3e3c0 0%, #d9bd72 45%, #a8863c 100%)",
             WebkitBackgroundClip: "text",
             backgroundClip: "text",
             color: "transparent",
             filter:
-              "drop-shadow(0 1px 0 rgba(255,248,222,0.55)) drop-shadow(0 2px 2px rgba(80,55,20,0.35)) drop-shadow(0 6px 14px rgba(20,12,4,0.42))",
+              "drop-shadow(0 1px 0 rgba(255,250,236,0.45)) drop-shadow(0 2px 4px rgba(60,42,16,0.32))",
           }}
-        >
-          Wedding
-        </span>
+        />
+
+        {/* tier 3 — THE HERO WORD, in Fraunces (`--font-couple`), the
+            SAME identity serif and the SAME three-layer embossed-gold
+            recipe as the Save the Date's own hero numeral: a richer,
+            higher-contrast vertical gradient fill; a STEPPED text-shadow
+            (several 1px-apart, progressively deeper gold/bronze layers)
+            that reads as real carved depth rather than a flat gradient
+            with one shadow behind it (`text-shadow` paints from the
+            glyph's own outline regardless of `color:transparent`, so it
+            keeps working alongside `background-clip:text`); and one
+            soft, wide `filter:drop-shadow` for the ambient shadow
+            separating it from the film. No backdrop-filter, no glow, no
+            outline, no real 3-D transform. Types on as a single word,
+            same clock as the two tiers above it. */}
+        <TypeOnPhrase
+          text="Wedding"
+          revealed={reached("textIn")}
+          reduceMotion={reduceMotion}
+          wrapperStyle={{
+            marginTop: "clamp(6px, 1.3dvh, 11px)",
+            fontFamily: "var(--font-couple)",
+            fontOpticalSizing: "auto",
+            fontVariationSettings: '"opsz" 144, "SOFT" 30, "WONK" 1',
+            fontWeight: 600,
+            fontSize: "clamp(36px, 11vw, 54px)",
+            lineHeight: 0.94,
+            letterSpacing: "0.01em",
+            textAlign: "center",
+          }}
+          letterStyle={{
+            background:
+              "linear-gradient(180deg, #fbeec3 0%, #eecf8e 20%, #cda158 44%, #a67c3a 68%, #8a642e 88%, #a2793a 100%)",
+            WebkitBackgroundClip: "text",
+            backgroundClip: "text",
+            color: "transparent",
+            textShadow:
+              "0 1px 0 #e2bd7c, 0 2px 0 #d3aa66, 0 3px 0 #c39751, 0 4px 1px rgba(60,40,12,0.4)",
+            filter: "drop-shadow(0 8px 14px rgba(46,30,10,0.34))",
+          }}
+        />
       </div>
 
       {/* ── THE COUPLE CONTENT ───────────────────────────────────────
@@ -415,17 +472,19 @@ export default function CoupleIntro({
             visual conjunction between the two names. Pure scale from a
             single point to rest via `EASE_ARRIVE`; no rotation, no
             bounce, no recolouring beyond a grounding drop-shadow — the
-            same artwork, unmodified. Enlarged ~20% again this pass, from
-            its own CURRENT rendered size (`clamp(84px,11dvh,108px)` →
-            `clamp(101px,13.2dvh,130px)`) — a strong, unmistakable
-            central separator between the two names, still short of
-            colliding with either. */}
+            same artwork, unmodified. Enlarged ~20% AGAIN this pass, from
+            its own CURRENT rendered size (`clamp(101px,13.2dvh,130px)` →
+            `clamp(121px,15.8dvh,156px)`) — now a genuinely strong,
+            unmistakable central separator between the two names. Margin
+            nudged up slightly alongside it (not the full 20%) so the
+            bigger mark still keeps real clearance from both names rather
+            than crowding them. */}
         <div
           className="relative flex items-center justify-center"
           style={{
             width: "100%",
-            height: "clamp(101px, 13.2dvh, 130px)",
-            margin: "clamp(11px, 2.2dvh, 20px) 0",
+            height: "clamp(121px, 15.8dvh, 156px)",
+            margin: "clamp(13px, 2.5dvh, 22px) 0",
             overflow: "visible",
           }}
         >
@@ -435,7 +494,7 @@ export default function CoupleIntro({
             aria-hidden="true"
             draggable={false}
             style={{
-              width: "clamp(101px, 13.2dvh, 130px)",
+              width: "clamp(121px, 15.8dvh, 156px)",
               height: "auto",
               transformOrigin: "50% 50%",
               opacity: hands ? 1 : 0,
@@ -484,6 +543,28 @@ export default function CoupleIntro({
           transition: "opacity 1s ease 0.3s",
         }}
       >
+        {/* a restrained dark pool directly behind the mark — the report
+            was that the ivory arrow merged into the film's own pale,
+            near-white held final frame. The section-wide dim above helps
+            everywhere, but this adds guaranteed local contrast exactly
+            where the mark sits, regardless of what colour the frame
+            happens to hold at that exact spot. Radial-only, no edge, no
+            border, no shape — it must read as a soft shadow the mark is
+            floating on, never a pill/plate/CTA backing. */}
+        <span
+          aria-hidden="true"
+          className="absolute"
+          style={{
+            left: "50%",
+            top: "50%",
+            width: "clamp(150px, 36dvw, 210px)",
+            height: "clamp(130px, 26dvh, 175px)",
+            transform: "translate(-50%, -50%)",
+            background:
+              "radial-gradient(closest-side, rgba(18,13,9,0.4) 0%, rgba(18,13,9,0.2) 52%, rgba(18,13,9,0) 82%)",
+            pointerEvents: "none",
+          }}
+        />
         <ScrollCue
           shown={reached("arrow")}
           reduceMotion={reduceMotion}
@@ -554,6 +635,14 @@ function NameBlock({
    letter is visible — revealing never reflows the composition, and
    the hands/parent lines never shift as a name types on.
    ───────────────────────────────────────────────────────────── */
+/** the "written by hand" per-letter reveal timing — ONE shared clock for
+ *  every type-on moment in this scene (the couple names below AND the
+ *  welcome text's three tiers), so a guest sees the exact same hand
+ *  writing both, never two different animation styles in one scene. See
+ *  `LetterName` and `TypeOnPhrase` below for the two places this drives. */
+const TYPE_ON_TOTAL_MS = 700;
+const TYPE_ON_PER_LETTER_MS = 180;
+
 /** the gold-foil ink shared by both letters of a per-letter reveal AND
  *  the reduced-motion single-node fallback — see the fix note below for
  *  why this must be applied per-LEAF, never on an ancestor wrapping
@@ -600,8 +689,8 @@ function LetterName({
   // type-on: TOTAL ms from first letter to last letter, each letter
   // taking PER_LETTER ms with a normalized stagger so every name
   // length completes at the same moment.
-  const TOTAL = 700;
-  const PER_LETTER = 180;
+  const TOTAL = TYPE_ON_TOTAL_MS;
+  const PER_LETTER = TYPE_ON_PER_LETTER_MS;
   const step = (TOTAL - PER_LETTER) / Math.max(1, text.length - 1);
 
   return (
@@ -633,6 +722,91 @@ function LetterName({
           }}
         >
           {ch}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/* TypeOnPhrase — the SAME per-letter "written by hand" reveal as
+   `LetterName` above (opacity + a whisper of a rise + a softening blur,
+   staggered with the identical TYPE_ON_TOTAL_MS/TYPE_ON_PER_LETTER_MS
+   clock), generalized to a full PHRASE for the welcome text, which
+   (unlike a single couple name) is multiple words that must still be
+   free to WRAP onto a second line on a narrow phone. Each word is its
+   own unbreakable inline-block of animated letters; a literal breakable
+   space sits between word-blocks, exactly where a browser would wrap
+   normal text — so the phrase wraps exactly as it did before, while the
+   stagger index still runs CONTINUOUSLY across the whole phrase (not
+   restarting at each word), so the "hand" reads as one continuous line
+   of writing, not several separate flourishes.
+
+   `revealed` is expected to stay true permanently once a tier's own
+   text-in cue has fired (see `reached("textIn")` at the call sites) —
+   there is no reverse/"erasing" animation: once written, a phrase stays
+   written, and the WHOLE welcome block still fades out together via its
+   existing container-level opacity transition, exactly as before. */
+function TypeOnPhrase({
+  text,
+  revealed,
+  reduceMotion,
+  wrapperStyle,
+  letterStyle,
+}: {
+  text: string;
+  revealed: boolean;
+  reduceMotion: boolean;
+  /** layout-only: font, size, tracking, transform — never ink */
+  wrapperStyle: CSSProperties;
+  /** ink-only: colour/gradient/clip/shadow — applied per-LEAF letter,
+   *  never on the wrapper (see the `background-clip:text` fix note on
+   *  `LetterName` above; the same rule applies here). */
+  letterStyle: CSSProperties;
+}) {
+  if (reduceMotion) {
+    return <span style={{ ...wrapperStyle, ...letterStyle }}>{text}</span>;
+  }
+
+  const words = text.split(" ");
+  const letterCount = text.replace(/ /g, "").length;
+  const TOTAL = TYPE_ON_TOTAL_MS;
+  const PER_LETTER = TYPE_ON_PER_LETTER_MS;
+  const step = (TOTAL - PER_LETTER) / Math.max(1, letterCount - 1);
+  const letterFilter = letterStyle.filter ? `${letterStyle.filter} ` : "";
+
+  let i = 0;
+  return (
+    <span style={wrapperStyle}>
+      {words.map((word, wi) => (
+        // a literal, breakable space BEFORE every word but the first —
+        // real text between the word-blocks, so the phrase still wraps
+        // at a word boundary on a narrow phone exactly as plain text
+        // would (adjacent inline-block elements with nothing between
+        // them in the DOM never get a wrap opportunity).
+        <span key={wi}>
+          {wi > 0 && " "}
+          <span style={{ display: "inline-block", whiteSpace: "nowrap" }}>
+            {Array.from(word).map((ch, ci) => {
+              const idx = i++;
+              return (
+                <span
+                  key={ci}
+                  aria-hidden="true"
+                  style={{
+                    display: "inline-block",
+                    ...letterStyle,
+                    opacity: revealed ? 1 : 0,
+                    transform: revealed ? "translateY(0)" : "translateY(0.045em)",
+                    filter: `${letterFilter}${revealed ? "blur(0)" : "blur(2px)"}`,
+                    transition: `opacity ${PER_LETTER}ms ease, transform ${PER_LETTER}ms ${EASE}, filter ${PER_LETTER}ms ease`,
+                    transitionDelay: revealed ? `${Math.round(idx * step)}ms` : "0ms",
+                  }}
+                >
+                  {ch}
+                </span>
+              );
+            })}
+          </span>
         </span>
       ))}
     </span>

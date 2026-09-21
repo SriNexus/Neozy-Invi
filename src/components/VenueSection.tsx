@@ -84,8 +84,9 @@ export default function VenueSection({
           className="font-sc"
           style={{
             color: hasImage ? "var(--gold-soft)" : "var(--gold-invite-dim)",
-            fontSize: "clamp(10px,2.5vw,12px)",
-            letterSpacing: "0.5em",
+            // global floor: never below the parent-name baseline (13px)
+            fontSize: "clamp(13px,3vw,15px)",
+            letterSpacing: "0.4em",
             textTransform: "uppercase",
           }}
         >
@@ -158,8 +159,9 @@ export default function VenueSection({
               className="font-sc mt-3"
               style={{
                 color: hasImage ? "var(--gold-soft)" : "var(--gold-invite-dim)",
-                fontSize: "clamp(10px,2.6vw,12px)",
-                letterSpacing: "0.24em",
+                // global floor: never below the parent-name baseline (13px)
+                fontSize: "clamp(13px,2.8vw,14.5px)",
+                letterSpacing: "0.2em",
                 textTransform: "uppercase",
               }}
             >
@@ -178,8 +180,9 @@ export default function VenueSection({
               border: `1px solid ${hasImage ? "rgba(227,205,154,0.5)" : "var(--gold-invite)"}`,
               color: hasImage ? "var(--gold-soft)" : "var(--gold-invite)",
               fontFamily: "var(--font-sc)",
-              fontSize: "clamp(10px,2.6vw,12px)",
-              letterSpacing: "0.18em",
+              // global floor: never below the parent-name baseline (13px)
+              fontSize: "clamp(13px,2.8vw,14.5px)",
+              letterSpacing: "0.15em",
               textTransform: "uppercase",
               textDecoration: "none",
               background: hasImage ? "rgba(20,14,8,0.25)" : "rgba(252,249,242,0.5)",

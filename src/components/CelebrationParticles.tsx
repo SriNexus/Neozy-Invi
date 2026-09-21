@@ -22,6 +22,25 @@ import type { CSSProperties } from "react";
  * Deliberately positioned BEHIND the date/countdown content (see the
  * zIndex where this mounts in DateReveal.tsx) — the pieces frame the
  * reveal, they never sit on top of and obscure the numerals.
+ *
+ * PASS 2 — "far too weak" fix: the first version released every piece
+ * from one exact top-corner pixel with fixed PX travel distances (max
+ * ~300px), which on a tall phone covered a small fraction of the screen
+ * and read as a faint puff, not a celebration. Three changes fixed this,
+ * together reading as an order of magnitude stronger without becoming
+ * fireworks:
+ *   1. DENSITY — default count roughly tripled, and each corner's
+ *      release point is now jittered across a small strip of the top
+ *      edge (not one pixel), so the burst visibly ORIGINATES from a
+ *      region, not a point.
+ *   2. REACH — travel distance is now expressed in `vw`/`vh` (percentage
+ *      of the actual viewport) instead of fixed pixels, so the sweep
+ *      genuinely spans the composition on every phone size instead of a
+ *      constant, easily-dwarfed pixel amount.
+ *   3. DURATION — individual pieces now stagger their release and run
+ *      longer (see `makePieces`), so motion keeps visibly developing for
+ *      ~1.5–2s after the initial release before the whole system fades,
+ *      instead of the celebration reading as one instantaneous flash.
  */
 
 type Shape = "petal" | "leaf" | "confetti" | "dot";
@@ -33,6 +52,13 @@ interface ConfettiPiece {
   shape: Shape;
   color: string;
   size: number;
+  /** release point, jittered along a strip of the top edge rather than
+   *  one fixed pixel — vw from the piece's own side edge, vh from top */
+  startXVw: number;
+  startYVh: number;
+  /** travel distance in vw (horizontal) / vh (vertical) — percentage of
+   *  the real viewport, so the sweep scales with the actual screen
+   *  instead of a constant, easily-dwarfed pixel amount */
   dx: number;
   dy: number;
   rotateFrom: number;
@@ -56,32 +82,37 @@ const PALETTE = [
 
 const SHAPES: Shape[] = ["petal", "leaf", "confetti", "dot"];
 
-/** one piece per side, released from that top corner outward + downward.
- *  Angles are measured from the horizontal at that corner (0° = straight
- *  out along the top edge, 90° = straight down), biased toward the
- *  40–120° range so the two bursts read as sweeping down and inward
- *  across the scene rather than skimming flat along the top edge. */
+/** one piece per side, released from a small strip of that top corner
+ *  outward + downward. Angles are measured from the horizontal at that
+ *  corner (0° = straight out along the top edge, 90° = straight down),
+ *  biased toward the 25–130° range so the two bursts read as sweeping
+ *  down and inward across the scene rather than skimming flat along the
+ *  top edge. Distances are in `vw`/`vh` (see the file header, PASS 2),
+ *  and delay/duration are staggered widely so the sweep keeps visibly
+ *  developing for ~1.5–2s rather than resolving in one instant. */
 function makePieces(perSide: number): ConfettiPiece[] {
   const pieces: ConfettiPiece[] = [];
   let id = 0;
   (["left", "right"] as const).forEach((side) => {
     const outward = side === "left" ? 1 : -1;
     for (let i = 0; i < perSide; i++) {
-      const angle = (35 + Math.random() * 90) * (Math.PI / 180);
-      const dist = 70 + Math.random() * 230;
-      const spin = 80 + Math.random() * 260;
+      const angle = (25 + Math.random() * 105) * (Math.PI / 180);
+      const dist = 30 + Math.random() * 52; // vw-scale magnitude
+      const spin = 90 + Math.random() * 300;
       pieces.push({
         id: id++,
         side,
         shape: SHAPES[Math.floor(Math.random() * SHAPES.length)],
         color: PALETTE[Math.floor(Math.random() * PALETTE.length)],
-        size: 5 + Math.random() * 11,
+        size: 6 + Math.random() * 17,
+        startXVw: Math.random() * 15,
+        startYVh: -2 + Math.random() * 9,
         dx: outward * Math.cos(angle) * dist,
-        dy: Math.sin(angle) * dist * 0.92 + Math.random() * 30,
+        dy: Math.sin(angle) * dist * 1.15 + Math.random() * 9,
         rotateFrom: Math.random() * 360,
         rotateTo: (Math.random() < 0.5 ? -1 : 1) * spin,
-        delay: Math.random() * 0.5,
-        duration: 1.9 + Math.random() * 1.6,
+        delay: Math.random() * 0.9,
+        duration: 2.3 + Math.random() * 1.9,
       });
     }
   });
@@ -119,8 +150,8 @@ function ConfettiShape({ color, size }: { color: string; size: number }) {
 
 export default function CelebrationParticles({
   active = false,
-  count = 64,
-  durationMs = 3200,
+  count = 180,
+  durationMs = 4500,
 }: {
   active?: boolean;
   /** TOTAL pieces across both corners (split evenly). Dense by design —
@@ -144,13 +175,13 @@ export default function CelebrationParticles({
           className="absolute"
           style={
             {
-              top: 0,
-              left: p.side === "left" ? 0 : "auto",
-              right: p.side === "right" ? 0 : "auto",
+              top: `${p.startYVh.toFixed(1)}vh`,
+              left: p.side === "left" ? `${p.startXVw.toFixed(1)}vw` : "auto",
+              right: p.side === "right" ? `${p.startXVw.toFixed(1)}vw` : "auto",
               animation: `celebrationConfetti ${p.duration}s cubic-bezier(0.16,1,0.3,1) ${p.delay}s both`,
               willChange: "transform, opacity",
-              "--conf-dx": `${p.dx.toFixed(1)}px`,
-              "--conf-dy": `${p.dy.toFixed(1)}px`,
+              "--conf-dx": `${p.dx.toFixed(1)}vw`,
+              "--conf-dy": `${p.dy.toFixed(1)}vh`,
               "--conf-rot-from": `${p.rotateFrom.toFixed(0)}deg`,
               "--conf-rot-to": `${p.rotateTo.toFixed(0)}deg`,
             } as CSSProperties

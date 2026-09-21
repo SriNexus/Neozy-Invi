@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import { Emblem } from "./decor/Ornaments";
 import { useActiveTheme } from "../data/useTheme";
@@ -65,17 +65,20 @@ export default function Countdown({
   visible?: boolean;
 }) {
   const theme = useActiveTheme();
-  const [state, setState] = useState(() => timeLeft(targetDate));
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  // a plain re-render clock, ticked once a second by the effect below.
+  // The countdown VALUE itself is never stored/mirrored in state — it is
+  // computed fresh below on every render, so it is always accurate
+  // (including the instant `visible` turns true) without an effect ever
+  // needing to "prime" it; the effect's only job is the timer itself.
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     if (!visible) return;
-    setState(timeLeft(targetDate));
-    timer.current = setInterval(() => setState(timeLeft(targetDate)), 1000);
-    return () => {
-      if (timer.current) clearInterval(timer.current);
-    };
-  }, [visible, targetDate]);
+    const id = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [visible]);
+
+  const state = timeLeft(targetDate);
 
   if (!visible) return null;
 
@@ -165,7 +168,8 @@ export default function Countdown({
                 fontWeight: 600,
                 marginTop: "clamp(4px,0.8vh,7px)",
                 color: "var(--gold-invite-dim)",
-                fontSize: "clamp(12px,3vw,15px)",
+                // global floor: never below the parent-name baseline (13px)
+                fontSize: "clamp(13px,3vw,15px)",
                 letterSpacing: "0.1em",
                 marginLeft: "0.1em",
                 textTransform: "uppercase",

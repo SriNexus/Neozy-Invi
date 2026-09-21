@@ -45,8 +45,9 @@ const labelStyle: React.CSSProperties = {
   marginBottom: 8,
   color: "var(--text-secondary)",
   fontFamily: "var(--font-sc)",
-  fontSize: 10,
-  letterSpacing: "0.22em",
+  // global floor: never below the parent-name baseline (13px)
+  fontSize: 13,
+  letterSpacing: "0.18em",
   textTransform: "uppercase",
 };
 
@@ -208,8 +209,9 @@ export default function RsvpSection({
                           borderRadius: 2,
                           color: on ? "var(--gold-invite)" : "var(--text-secondary)",
                           fontFamily: "var(--font-sc)",
-                          fontSize: 11,
-                          letterSpacing: "0.1em",
+                          // global floor: never below the parent-name baseline
+                          fontSize: 13,
+                          letterSpacing: "0.08em",
                           textTransform: "uppercase",
                           transition: "all 0.25s ease",
                         }}
@@ -274,7 +276,7 @@ export default function RsvpSection({
                           </span>
                           <span style={{ color: "var(--text-primary)", fontSize: 14 }}>
                             {ev.name}
-                            <span style={{ color: "var(--text-tertiary)", fontSize: 12 }}>
+                            <span style={{ color: "var(--text-tertiary)", fontSize: 13 }}>
                               {"  ·  "}{ev.time}
                             </span>
                           </span>
@@ -310,8 +312,9 @@ export default function RsvpSection({
                   background: "linear-gradient(135deg, var(--gold-invite), var(--gold-invite-light))",
                   color: "#1c1408",
                   fontFamily: "var(--font-sc)",
-                  fontSize: 12,
-                  letterSpacing: "0.2em",
+                  // global floor: never below the parent-name baseline
+                  fontSize: 13,
+                  letterSpacing: "0.15em",
                   textTransform: "uppercase",
                   borderRadius: 2,
                   opacity: phase === "submitting" ? 0.7 : 1,
@@ -385,8 +388,9 @@ function Heading({
         className="font-sc"
         style={{
           color: "var(--gold-invite-dim)",
-          fontSize: "clamp(10px,2.5vw,12px)",
-          letterSpacing: "0.45em",
+          // global floor: never below the parent-name baseline (13px)
+          fontSize: "clamp(13px,3vw,15px)",
+          letterSpacing: "0.35em",
           textTransform: "uppercase",
         }}
       >

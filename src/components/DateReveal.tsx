@@ -78,12 +78,29 @@ const COUNTDOWN_TOP_DVH = 68;
 // rather than using every last available pixel right up to it.
 const COUNTDOWN_BOTTOM_DVH = 13;
 
-/* the painted gold cover — a static reusable asset (public/themes/theme-1/images/scratch.png,
-   1457×996, RGBA with a torn organic edge). It is ONLY a cover: the date and
-   countdown beneath it stay dynamic DOM. */
+/* the painted gold cover — a static reusable asset (public/themes/theme-1/
+   images/scratch.png, RGBA with a torn organic edge). It is ONLY a cover:
+   the date and countdown beneath it stay dynamic DOM.
+
+   ⚠️ REAL BUG, FOUND AND FIXED: this was hardcoded to `1457×996` (a
+   1.463:1 landscape ratio) across several previous passes, but the
+   actual file — inspected directly, pixel data read, not assumed — is
+   **500×500, a perfect square**. Every `aspectRatio` built from the old
+   constants was therefore forcing this square artwork into a much wider,
+   shorter box, which the browser fills by STRETCHING the image
+   (distorting the torn-edge artwork) — and, far more importantly, by
+   giving the cover much LESS effective height than its width, so a
+   portrait text stack (weekday → numeral → month → year/time) taller
+   than that squashed height could show slivers of itself above/below the
+   cover. This is the actual root cause the "date peeks out around the
+   scratch image" report was describing. Fixing these two constants to
+   match the real file removes the distortion AND — because a SQUARE
+   cover sized to the same width now has far more height than the old
+   landscape shape did — resolves the coverage gap directly, without
+   needing the cover to become impractically wide. */
 const COVER_SRC = "/themes/theme-1/images/scratch.png";
-const COVER_W = 1457;
-const COVER_H = 996;
+const COVER_W = 500;
+const COVER_H = 500;
 
 /* completion fires once ~50% of the cover's ORIGINALLY-OPAQUE gold has
    actually been erased — measured by sampling the canvas alpha channel,
@@ -660,7 +677,7 @@ export default function DateReveal({
     bloomTimers.current.push(
       window.setTimeout(() => setBloom(false), 1700), // light begins to recede (2.2s gentle exit)
       window.setTimeout(() => goPhase("settled"), 2300), // countdown completes at full brightness
-      window.setTimeout(() => setSprinkle(false), 3300), // particles' own 3.2s fade has finished, unmount
+      window.setTimeout(() => setSprinkle(false), 4600), // particles' own 4.5s fade has finished, unmount
     );
   }, [goPhase, reduceMotion]);
 
@@ -674,9 +691,18 @@ export default function DateReveal({
     beginReveal();
   }, [beginReveal]);
 
+  // `canScratch` is a one-time browser-capability check (see its own
+  // `useMemo` above) and `beginReveal` itself already no-ops once phase
+  // has left "sealed" — so this genuinely only ever needs to run once,
+  // right after mount, exactly the "synchronize with an external system"
+  // case an effect is for. Empty deps (was `[canScratch, phase,
+  // forceReveal]`, which re-ran this effect on every later phase change
+  // for no reason, even though the guard made every one of those re-runs
+  // a no-op).
   useEffect(() => {
-    if (!canScratch && phase === "sealed") forceReveal();
-  }, [canScratch, phase, forceReveal]);
+    if (!canScratch) forceReveal();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(
     () => () => { bloomTimers.current.forEach((t) => clearTimeout(t)); },
@@ -768,7 +794,7 @@ export default function DateReveal({
           effects (an ambient sprinkle + a small radial burst) that were
           really the same job done twice at too faint a scale. */}
       <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 7 }}>
-        <CelebrationParticles active={sprinkle && !reduceMotion} count={64} durationMs={3200} />
+        <CelebrationParticles active={sprinkle && !reduceMotion} count={180} durationMs={4500} />
       </div>
 
       {/* ── ZONE 1 — the ornate panel: scratch cover + revealed date ──
@@ -799,31 +825,33 @@ export default function DateReveal({
             whisper of scale into place as the cover dissolves — the same
             gesture, not a separate render.
 
-            SIZE — FIXED a real overflow bug this pass, then sized up
-            another ~1.5× on top of the fix. The previous `min(48dvh,
-            400px)` had no VW term at all: a pure-dvh width overflows the
-            VIEWPORT'S OWN WIDTH whenever the dvh value exceeds
-            `100 × (viewport width / viewport height)` — on a typical
-            390×844 phone (aspect ≈0.462) that threshold is ≈46, so
-            `48dvh` was ALREADY silently overflowing ~15px past the
-            screen edge (clipped by this section's own `overflow:
-            hidden`, not visibly broken, but not the deliberate framed
-            placement it should have been either). `94vw` is now the
-            REAL governing term on every phone-shaped viewport — a
-            controlled, nearly edge-to-edge width with a small
-            intentional margin, replacing an accidental clip. `62dvh`
-            and `460px` stay only as ceilings for unusually wide/short
-            viewports (a tablet in landscape) where `vw` alone would
-            otherwise let it grow arbitrarily tall. The scratch canvas
-            itself needs no change for any of this: `ScratchCover`
-            measures its own parent's live `offsetWidth/Height` (via
-            `ResizeObserver`) and maps pointer coordinates through that
-            same live size, so it is inherently resolution-independent —
-            correct at any stage size automatically. */}
+            SIZE — the box is now SQUARE (see `COVER_W`/`COVER_H` above:
+            the real asset is 500×500, not the previously-assumed
+            1457×996 landscape). A square cover gives dramatically more
+            HEIGHT than the old landscape shape did at the same width —
+            which is what actually fixes "the date peeks out": a wide,
+            short cover could never fully cover a tall weekday → numeral
+            → month → year/time stack no matter how wide it got, while a
+            square one comfortably clears it with real margin to spare.
+            `80vw` is deliberately smaller in raw WIDTH than the previous
+            (buggy, distorted) `94vw` — because the shape itself is now
+            correct, this is a genuinely bigger, more prominent, fully-
+            covering cover, not a step down. `52dvh`/`380px` stay only as
+            ceilings for unusually wide/short viewports (a tablet in
+            landscape); `vw` is the real governing term on every
+            phone-shaped viewport, and (per the fix two passes ago) is
+            required alongside a dvh term specifically because a
+            dvh-only width can silently exceed the viewport's own WIDTH
+            on typical phone aspect ratios. The scratch canvas itself
+            needs no change for any of this: `ScratchCover` measures its
+            own parent's live `offsetWidth/Height` (via `ResizeObserver`)
+            and maps pointer coordinates through that same live size, so
+            it is inherently resolution-independent — correct, and
+            correctly square, at any stage size automatically. */}
         <div
           className="relative flex items-center justify-center"
           style={{
-            width: "min(94vw, 62dvh, 460px)",
+            width: "min(80vw, 52dvh, 380px)",
             transform: sealed ? "scale(0.982) translateY(4px)" : "scale(1) translateY(0)",
             transition: reduceMotion ? "none" : "transform 1.3s cubic-bezier(0.16,1,0.3,1)",
           }}

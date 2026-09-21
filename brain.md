@@ -237,19 +237,37 @@ the card is behind it, not the video.
   below), never redesigned. **No Ganesha in this scene** (removed
   separately, earlier; `ganesha.png` is still used elsewhere, see Assets).
   What the film now carries, in order:
-  - **THE WELCOME TEXT** (9–12s in, 12–14s out, in the illustrated
-    couple's blank sky) is a SEPARATE, SHORTER moment that comes FIRST,
+  - **THE WELCOME TEXT** (9–13s in, 13–14.3s out — see "Pass 3" below, in
+    the illustrated couple's blank sky) is a SEPARATE, SHORTER moment that
+    comes FIRST,
     NEVER the couple's own names (a wrong pass once put `couple.name2 &
     couple.name1` here — reverted). THREE tiers now, not one flat line
     (a later correction: the previous single hero line, "We Welcome
     You", never actually said the word "wedding"): "With Joy In Our
-    Hearts" (tiny, `--gold-invite-dim`) → "Welcome To Our" (a notch
-    larger, `--gold-invite`) → **"WEDDING"** (the hero word, largest,
-    the dimensional gold-foil treatment — a vertical light→dark gold
-    `background`/`backgroundClip:"text"` fill plus three stacked
-    `filter: drop-shadow(...)` layers). Hard-confined to a 20dvh band
-    (30–50dvh, `overflow:hidden`) — never outside it, regardless of
-    tier count.
+    Hearts" → "Welcome To Our" → **"WEDDING"**.
+    **All three tiers redesigned again, once more, after an explicit
+    "this still reads like generic Word-document text" correction**:
+    every tier now carries real dimensional ink (tier 1 got a proper
+    two-step engraved `text-shadow`; tier 2 moved onto its own lighter
+    gold gradient fill; tier 3's font changed from `--font-invite-label`
+    — this project's own SUPPORTING/caption voice, never meant to carry
+    a hero moment — to `--font-couple` (Fraunces), the IDENTITY voice
+    already used for the Save the Date's own hero numeral, with the SAME
+    three-layer embossed-gold recipe (gradient fill + stepped
+    `text-shadow` extrusion + ambient `filter:drop-shadow`) rather than
+    the old flat gradient + plain drop-shadow. `paddingTop` inside the
+    fixed 20dvh band was pulled back (1.2dvh → 0.3dvh) and every
+    inter-tier gap opened ~10%, per an explicit "use more of the band,
+    don't sit compressed near its middle" correction. Still
+    hard-confined to a 20dvh band, `overflow:hidden` — never outside it,
+    regardless of tier count or spacing.
+    **Pass 3 — targeted tweaks after "almost right, just needs a nudge"
+    feedback**: (1) the whole band shifted from `top: 30dvh` to
+    `top: 27dvh` — a straight ~10% upward shift of the existing
+    composition, not a redesign of it. (2) `CUE.textOut` pushed from
+    `12` to `13` (one straight extra second of fully-opaque reading time
+    before the fade begins), with `CUE.brideName` untouched at 17.5s —
+    plenty of clearance, so nothing downstream was delayed.
   - **THE COUPLE CONTENT** (17.5s bride name → 18.25s her parent line →
     18.75s wedding-hands → 19.5s groom name → 20.25s his parent line,
     fully settled ≈21s, then holds unanimated to the film's end) — the
@@ -280,12 +298,14 @@ the card is behind it, not the video.
     individually. `DateFace`'s and `Countdown`'s gold-foil numerals never
     had this bug because they are single plain-text spans with no
     animated children of their own. The wedding-hands mark
-    (`wedding-hands.png`) has been enlarged THREE TIMES since the plaque
+    (`wedding-hands.png`) has been enlarged FOUR TIMES since the plaque
     came out — `clamp(62px,8dvh,78px)` → `clamp(72px,9.5dvh,92px)` →
-    `clamp(84px,11dvh,108px)` → now `clamp(101px,13.2dvh,130px)` (this
-    last one an explicit "~20% from its CURRENT size, not the original"
-    ask — 84×1.2≈101, 108×1.2≈130) — and the names (`LetterName`) once
-    more too, `clamp(44px,6.4dvh,68px)` → `clamp(52px,7.4dvh,80px)`, per
+    `clamp(84px,11dvh,108px)` → `clamp(101px,13.2dvh,130px)` → now
+    `clamp(121px,15.8dvh,156px)` (each of the last two an explicit "~20%
+    from its CURRENT size, not the original" ask — 84×1.2≈101,
+    108×1.2≈130, then 101×1.2≈121, 130×1.2≈156) — and the names
+    (`LetterName`) once more too, `clamp(44px,6.4dvh,68px)` →
+    `clamp(52px,7.4dvh,80px)`, per
     an explicit "one of the strongest voices in the scene" brief. Same
     `EASE_ARRIVE` scale-from-a-point reveal on the hands, same file,
     never recoloured beyond its grounding drop-shadow. The same
@@ -397,6 +417,24 @@ the card is behind it, not the video.
   `ScratchCover` measures its own parent's live `offsetWidth/Height` via
   `ResizeObserver` and maps pointer coordinates through that same live
   size, so it is inherently resolution-independent.
+  ⚠️ **Pass 5 — the ACTUAL root cause of "the date peeks out around the
+  scratch image", found by finally inspecting the real file**:
+  `COVER_W`/`COVER_H` had been hardcoded `1457×996` (a 1.463:1 landscape
+  ratio) since this cover system was first built. The real file,
+  read directly with a real tool, is **500×500 — a perfect square**.
+  Every `aspectRatio` built from the wrong constants was forcing a
+  square image into a much wider, shorter box, which (a) STRETCHED/
+  distorted the artwork, and (b) gave the cover far LESS height than a
+  correctly-shaped square cover would — not enough to cover a tall
+  weekday→numeral→month→year stack, which is exactly what "peeking"
+  looked like. Fixed by correcting the two constants; the stage width
+  formula changed from the landscape-tuned `min(94vw,62dvh,460px)` to
+  the square-tuned `min(80vw,52dvh,380px)` — smaller in raw WIDTH than
+  before but a genuinely bigger, fully-covering, undistorted cover once
+  the shape itself is correct. **Lesson: measure an asset's real pixel
+  dimensions with a tool before hardcoding them anywhere — a wrong
+  assumption here survived FOUR separate sizing passes because every
+  fix kept "improving" the wrong shape.**
   **Idle rock, fixed to stay stopped**: `ScratchCover` now tracks
   `everScratched` (state, not a ref — a ref was tried first and correctly
   flagged by lint as "accessed during render") and pauses `scratchRock`
@@ -511,6 +549,23 @@ the card is behind it, not the video.
   this; the data model allows a hypothetical custom one) falls back to
   the earlier plain-paper + arch-ghost + `PageEnvelope` + its own title
   text, since there is no photograph to supply a name there.
+  **Pass — "too plain, weak hierarchy" fix**: the day numeral moved off
+  a flat `--text-primary` solid onto the SAME three-layer embossed-gold
+  recipe (gradient fill + stepped `text-shadow` extrusion + ambient
+  `filter:drop-shadow`, scaled down from the Save the Date's own) used
+  everywhere else in the invitation for a hero moment — `DAY_GOLD_FILL/
+  EXTRUDE/AMBIENT` at the top of the file — and grew slightly
+  (30–42px → 32–46px). The venue name gained its own step above the
+  address (13–14.5px flat → 14–16px, `--gold-invite-dim` ink) so DATE →
+  VENUE → address now reads as three tiers, not one uniform size. A
+  small `HairRule` (diamond node, 64px wide) was added between the date
+  and venue clusters as the section's missing "refined gold separator."
+  None of this touched the artwork-panel positioning (`top: 39.5dvh` /
+  `bottom: 32dvh`) — that intersection was already measured per-pixel
+  across all five images in an earlier pass and is not something a
+  build-only pass (no screenshots, no browser automation) should
+  re-derive; the added elements' margins were trimmed elsewhere to keep
+  the total vertical budget close to what it was before.
 - `CouplePhotoExperience.tsx` — the album as a VERTICAL REEL: `AlbumLeaf`
   renders ONE photograph per full-screen `data-reel-scene` 100dvh section, so
   the existing pager consumes the photographs one deliberate gesture at a
@@ -564,6 +619,15 @@ the card is behind it, not the video.
   old bare chevron pulsed with the retired `scrollBounce`, whose 0.28
   opacity floor made a thin gold stroke read as "not there" over the
   artwork's dark lower band.)
+  **CoupleIntro-only contrast fix**: reported as merging into the gate
+  film's own pale, near-white held final frame. `ScrollCue.tsx` itself
+  was left untouched (it also mounts in `DateReveal.tsx`, unaffected by
+  this report); instead `CoupleIntro.tsx` gained (1) its own
+  section-wide "arrow" dim nudged 0.22 → 0.30 opacity, and (2) a new
+  small radial dark backing pool (`rgba(18,13,9,…)`, no edge/border)
+  positioned directly behind the arrow+wordmark inside its button — a
+  guaranteed local contrast boost regardless of the exact pixel colour
+  behind it at that moment, without turning the mark into a pill/plate.
 - `CelebrationParticles.tsx` — REDESIGNED into ONE system (no `mode` prop
   any more — the old `"fall"`/`"burst"` modes, and their
   `celebrationFall`/`celebrationBurst` keyframes in index.css, are gone;
@@ -591,6 +655,19 @@ the card is behind it, not the video.
   renders on it changed. Unmount timeout bumped 3000ms → 3300ms to
   clear the new animation's own 3.2s duration instead of cutting it off
   ~200ms early.
+  **Pass 2 — "still far too weak" fix**: the numbers above are the
+  ORIGINAL ones; after a "make the overall visual impact ~10× stronger
+  and keep it alive for 1–2s" correction, three things changed together
+  (`count` 64→180 default, `durationMs` 3200→4500 at the `DateReveal.tsx`
+  call site): (1) each corner's release point is now jittered across a
+  small strip of the top edge (`startXVw`/`startYVh`) instead of one
+  exact pixel, so the burst visibly originates from a region; (2) travel
+  distance (`--conf-dx`/`--conf-dy`) switched from fixed PX to `vw`/`vh`,
+  so the sweep genuinely spans the screen on every device instead of a
+  constant, easily-dwarfed pixel amount; (3) per-piece delay/duration
+  widened (0–0.9s delay, 2.3–4.2s duration) so motion keeps visibly
+  developing for ~1.5–2s instead of resolving in one instant. Unmount
+  timeout moved 3300ms → 4600ms to match the new 4.5s container duration.
 
 ## Artwork geometry facts (measured, trust these)
 
@@ -649,6 +726,21 @@ these measured phases, not a guess from watching the file at a glance:
   shared ease `cubic-bezier(0.22,1,0.36,1)`.
 - Uppercase tracked labels: compensate tracking with `marginLeft` equal to
   the `letterSpacing` em value (existing pattern, keep it).
+- **Global type-size floor: 13px, the parent-name (`ParentLine` in
+  CoupleIntro.tsx) baseline.** No readable text anywhere in the
+  guest-facing invitation should render smaller than this on any
+  supported width (360–412px) — an explicit, repeated correction after
+  an audit found labels/captions across EventsSection, VenueSection,
+  RsvpSection, ClosingSection, CouplePhotoExperience, ScrollCue,
+  FloatingContact and Countdown sitting as low as 8.5–12px. Fixed by
+  raising each `clamp()`'s MIN (and nudging its max up a little, and
+  often trimming letter-spacing slightly to keep the now-larger tracked
+  label from overflowing its own row) — never by leaving the smallest
+  tier tiny "because there's a hierarchy". Hierarchy still exists; it
+  just no longer means "the bottom tier is unreadable". This floor does
+  NOT apply to `src/pages/admin/*.tsx` — that's a separate internal CMS
+  surface, not part of the wedding invitation a guest reads, and keeps
+  its own plain dashboard conventions.
 - Decorations: `aria-hidden`, `pointer-events: none`. Real links keep real
   `href`s. Titles h2/h3 semantic.
 - Style bar: luxury invitation stationery — restraint, proportion, editorial
@@ -708,8 +800,15 @@ All Theme 1 media lives under `public/themes/theme-1/` (images/, videos/,
   the Cover gate, the gate film's poster (in `CoupleIntro.tsx`) and the
   closing page (`closingImage`);
   `ganesha.png` (394×441) and `wedding-hands.png` (500×500) are transparent
-  marks (both are also album placeholder pages) and `scratch.png` (1457×996,
-  2.5MB) is the scratch cover. `albumArt` lists five files, one full-screen
+  marks (both are also album placeholder pages) and `scratch.png`
+  (**500×500 — a perfect SQUARE**, ~2.5MB) is the scratch cover. ⚠️ This
+  file's real dimensions were wrongly documented here as "1457×996" for
+  a long time, matching a real bug in `DateReveal.tsx`'s own
+  `COVER_W`/`COVER_H` constants (see that entry below) — always verify
+  an asset's actual pixel size with a real tool before hardcoding it
+  anywhere; a wrong assumption here silently distorted this artwork and
+  broke its coverage of the date across several passes before being
+  caught. `albumArt` lists five files, one full-screen
   album page each — including `haldi.jpg`, so the album reflects edited
   artwork too. There are only TWO wallpaper-grade paintings in the theme,
   so the ceremony files are the ones to edit.

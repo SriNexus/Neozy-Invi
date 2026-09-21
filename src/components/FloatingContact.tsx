@@ -56,10 +56,11 @@ export default function FloatingContact({ contact }: { contact: ContactData }) {
             className="flex items-center gap-2"
             style={{
               color: "var(--ivory, #f4efe4)",
-              fontSize: 11.5,
+              // global floor: never below the parent-name baseline (13px)
+              fontSize: 13,
               fontFamily: "var(--font-invite-label)",
               fontWeight: 600,
-              letterSpacing: "0.14em",
+              letterSpacing: "0.12em",
               textTransform: "uppercase",
               textDecoration: "none",
               whiteSpace: "nowrap",
@@ -80,10 +81,11 @@ export default function FloatingContact({ contact }: { contact: ContactData }) {
             className="flex items-center gap-2"
             style={{
               color: "var(--ivory, #f4efe4)",
-              fontSize: 11.5,
+              // global floor: never below the parent-name baseline (13px)
+              fontSize: 13,
               fontFamily: "var(--font-invite-label)",
               fontWeight: 600,
-              letterSpacing: "0.14em",
+              letterSpacing: "0.12em",
               textTransform: "uppercase",
               textDecoration: "none",
               whiteSpace: "nowrap",

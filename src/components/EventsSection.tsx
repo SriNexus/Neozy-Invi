@@ -5,7 +5,8 @@ import type { EventWallpaper } from "../data/themes";
 import { parseEventDate } from "../data/invitation";
 import { useActiveTheme } from "../data/useTheme";
 import { prefersReducedMotion } from "../lib/motion";
-import { HairRule, JharokhaArch, ThemeCorner, motifForEvent } from "./decor/Ornaments";
+import { HairRule, JharokhaArch, ThemeCorner } from "./decor/Ornaments";
+import { motifForEvent } from "../lib/eventMotif";
 
 /**
  * The Celebrations — the events chapter as a reel of designed pages
@@ -56,6 +57,21 @@ import { HairRule, JharokhaArch, ThemeCorner, motifForEvent } from "./decor/Orna
  */
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+/* the day numeral's embossed-gold ink — the SAME three-layer recipe
+   (gradient fill + stepped extrusion shadow + soft ambient shadow)
+   already used for the Save the Date's hero numeral and the welcome
+   text's hero word, scaled down for this numeral's smaller size (its
+   extrusion steps match CoupleIntro's "WEDDING" word, the closest match
+   in font size). Reused rather than reinvented, so a guest who has
+   already seen the Date scene reads this as the same premium hand,
+   not a different treatment — this is what actually took the section
+   from "flat text over a photo" to "designed page," not a size bump. */
+const DAY_GOLD_FILL =
+  "linear-gradient(180deg, #fbeec3 0%, #eecf8e 20%, #cda158 44%, #a67c3a 68%, #8a642e 88%, #a2793a 100%)";
+const DAY_GOLD_EXTRUDE =
+  "0 1px 0 #e2bd7c, 0 2px 0 #d3aa66, 0 3px 0 #c39751, 0 3px 1px rgba(60,40,12,0.4)";
+const DAY_GOLD_AMBIENT = "drop-shadow(0 5px 9px rgba(46,30,10,0.3))";
 
 /* the printed card's ground — a warm ivory paper, the same family as
    the invitation's paper world; owned by each scene so it scrolls with it */
@@ -242,7 +258,8 @@ function TitleScene({ reduce }: { reduce: boolean }) {
           style={{
             ...step(0),
             color: "var(--gold-invite-dim)",
-            fontSize: "clamp(10px, 2.6vw, 12px)",
+            // kept above the parent-name baseline (13px), not just at it
+            fontSize: "clamp(14px, 3vw, 16px)",
             letterSpacing: "0.5em",
             marginLeft: "0.5em",
             textTransform: "uppercase",
@@ -276,7 +293,7 @@ function TitleScene({ reduce }: { reduce: boolean }) {
             color: "var(--text-tertiary)",
             fontFamily: "'Cormorant', serif",
             fontStyle: "italic",
-            fontSize: "clamp(12px, 3.2vw, 13.5px)",
+            fontSize: "clamp(14px, 3.2vw, 15.5px)",
             lineHeight: 1.6,
           }}
         >
@@ -311,7 +328,8 @@ function DirectionsAction({ href }: { href: string }) {
         borderBottom: "1px solid rgba(184,148,63,0.55)",
         background: "transparent",
         fontFamily: "var(--font-sc)",
-        fontSize: "clamp(9px, 2.4vw, 10.5px)",
+        // kept above the parent-name baseline (13px), not just at it
+        fontSize: "clamp(14px, 3vw, 15.5px)",
         fontWeight: 600,
         letterSpacing: "0.22em",
         marginLeft: "0.22em",
@@ -501,14 +519,21 @@ function EventScene({
             </h2>
           )}
 
-          {/* the date — engraved, invitation-styled */}
+          {/* the date — engraved, invitation-styled. The day numeral now
+              carries the SAME dimensional gold-foil treatment as the
+              Save the Date/welcome hero moments (see DAY_GOLD_* above),
+              in place of a flat solid ink — the strongest, most
+              deliberate voice on the page, matching item 10's "DATE
+              clearly prominent" and giving the whole section real
+              carved depth instead of reading as plain overlay text. */}
           <div style={{ ...step(1), display: "flex", flexDirection: "column", alignItems: "center" }}>
             <span
               className="font-sc"
               style={{
                 color: "var(--gold-invite-dim)",
-                fontSize: "clamp(8.5px, 2.3vw, 10px)",
-                letterSpacing: "0.38em",
+                // kept above the parent-name baseline (13px), not just at it
+                fontSize: "clamp(14px, 3vw, 15.5px)",
+                letterSpacing: "0.3em",
                 marginLeft: "0.38em",
                 textTransform: "uppercase",
               }}
@@ -520,10 +545,15 @@ function EventScene({
                 style={{
                   fontFamily: "var(--font-couple)",
                   fontVariationSettings: '"opsz" 96, "SOFT" 50, "WONK" 1',
-                  fontWeight: 500,
-                  color: "var(--text-primary)",
-                  fontSize: "clamp(30px, min(9.6vw, 11dvh), 42px)",
+                  fontWeight: 600,
+                  fontSize: "clamp(32px, min(10.2vw, 11.6dvh), 46px)",
                   lineHeight: 0.9,
+                  background: DAY_GOLD_FILL,
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  color: "transparent",
+                  textShadow: DAY_GOLD_EXTRUDE,
+                  filter: DAY_GOLD_AMBIENT,
                 }}
               >
                 {dayNum}
@@ -532,9 +562,9 @@ function EventScene({
                 className="font-sc"
                 style={{
                   color: "var(--gold-invite)",
-                  fontSize: "clamp(11px, 3.1vw, 13.5px)",
+                  fontSize: "clamp(14px, 3.1vw, 16px)",
                   fontWeight: 600,
-                  letterSpacing: "0.3em",
+                  letterSpacing: "0.24em",
                   marginLeft: "0.3em",
                 }}
               >
@@ -546,10 +576,10 @@ function EventScene({
               style={{
                 marginTop: "clamp(4px, 1dvh, 7px)",
                 color: "var(--gold-invite)",
-                fontSize: "clamp(10px, 2.8vw, 12px)",
+                fontSize: "clamp(14px, 2.8vw, 15.5px)",
                 fontWeight: 600,
-                letterSpacing: "0.24em",
-                marginLeft: "0.24em",
+                letterSpacing: "0.2em",
+                marginLeft: "0.2em",
                 textTransform: "uppercase",
               }}
             >
@@ -557,16 +587,34 @@ function EventScene({
             </span>
           </div>
 
-          {/* the venue — secondary but designed */}
-          <div style={{ ...step(2), marginTop: "clamp(13px, 2.9dvh, 20px)" }}>
+          {/* a restrained gold hairline between the date and venue
+              clusters — the "refined gold separator" the section was
+              missing, replacing a plain margin gap with an intentional
+              mark of its own (a fraction of a diamond node, not a full
+              rule across the page), so the page reads as composed
+              rather than two stacked text blocks. Its own footprint is
+              tiny (a 1px line + a small node), so it does not cost the
+              vertical budget the venue block used to spend on a bare
+              gap. */}
+          <div style={{ ...step(2), marginTop: "clamp(6px, 1.3dvh, 10px)" }}>
+            <HairRule width={64} node="diamond" style={{ opacity: 0.85 }} />
+          </div>
+
+          {/* the venue — secondary but designed: lifted a step above the
+              supporting caption voice (item 10's "VENUE clearly
+              readable", distinct from the address beneath it) with a
+              warmer, richer ink and a touch more size, while the
+              address stays the smallest tier — kept just above the
+              13px baseline, never at it. */}
+          <div style={{ ...step(2), marginTop: "clamp(6px, 1.3dvh, 10px)" }}>
             <span
               className="font-sc"
               style={{
-                color: "var(--text-secondary)",
-                fontSize: "clamp(11px, 3vw, 13px)",
+                color: "var(--gold-invite-dim)",
+                fontSize: "clamp(14px, 3.4vw, 16px)",
                 fontWeight: 600,
-                letterSpacing: "0.24em",
-                marginLeft: "0.24em",
+                letterSpacing: "0.18em",
+                marginLeft: "0.22em",
                 textTransform: "uppercase",
               }}
             >
@@ -576,11 +624,11 @@ function EventScene({
               <span
                 style={{
                   display: "block",
-                  marginTop: 3,
+                  marginTop: 4,
                   color: "var(--text-tertiary)",
                   fontFamily: "'Cormorant', serif",
                   fontStyle: "italic",
-                  fontSize: "clamp(10.5px, 2.8vw, 12.5px)",
+                  fontSize: "clamp(14px, 2.8vw, 15px)",
                 }}
               >
                 {event.address}
@@ -591,7 +639,7 @@ function EventScene({
           {/* the action — refined and invitation-appropriate; part of
               the venue/location details, so it stays */}
           {event.directionsUrl && (
-            <div style={{ ...step(3), marginTop: "clamp(13px, 2.8dvh, 18px)" }}>
+            <div style={{ ...step(3), marginTop: "clamp(10px, 2.2dvh, 15px)" }}>
               <DirectionsAction href={event.directionsUrl} />
             </div>
           )}
