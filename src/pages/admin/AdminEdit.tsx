@@ -180,7 +180,7 @@ export default function AdminEdit() {
             <input
               value={draft.closing.familyMessage || ""}
               onChange={(e) => updateClosing("familyMessage", e.target.value)}
-              placeholder="With love — Abhay, Gunjan & our families"
+              placeholder="With love — Gunjan, Abhay & our families"
               className="admin-input"
             />
           </Field>

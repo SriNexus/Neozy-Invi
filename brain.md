@@ -247,6 +247,16 @@ the card is behind it, not the video.
 
 ## Component map
 
+- **Canonical guest-facing name order: Gunjan (`couple.name2`, bride) then
+  Abhay (`couple.name1`, groom)** everywhere both names appear together.
+  `CoupleIntro.tsx` already rendered this order (source of truth — the
+  couple's first on-screen appearance). `ClosingSection.tsx` and
+  `CouplePhotoExperience.tsx` had the opposite order at their own render
+  sites and were swapped to match; `invitation.ts`'s `closing.familyMessage`
+  string and `AdminEdit.tsx`'s matching placeholder were corrected too. The
+  underlying `name1`/`name2` fields keep their existing semantic roles
+  (groom/bride, tied to `groomParents`/`brideParents`) — only each
+  render site's own display order was fixed, never the data itself.
 - `CoupleIntro.tsx` — the couple scene. Currentime-driven clock off the
   gate film's own `currentTime`/`ended` (`CUE`, in SECONDS of film time —
   see its own header for the measured phases). **There is no Couple
@@ -569,7 +579,7 @@ the card is behind it, not the video.
   text sits on a guaranteed cream panel, so both are now redundant —
   `accentFor`/`ACCENTS` still exist but only render in the plain-paper
   fallback). **KEPT and now the ENTIRE overlay:** date (weekday, Fraunces
-  day numeral, month, time) and venue (name, address, `DirectionsAction`
+  day numeral, month, time) and venue (name, address, `ViewOnMapButton`
   — grouped with venue as "location details"). Same three-voice type
   system, same `step()` fade+translateY reveal, same colours
   (`--text-primary` for the day numeral, `--gold-invite`/`-dim` for
@@ -595,11 +605,33 @@ the card is behind it, not the video.
   build-only pass (no screenshots, no browser automation) should
   re-derive; the added elements' margins were trimmed elsewhere to keep
   the total vertical budget close to what it was before.
+  **Pass 2 — date hierarchy fixed again, further, per "the huge 4 makes
+  December unreadable"**: the numeral had already been pulled onto its
+  own line above, but month/year was still only a modest step up from
+  caption size, and a separate WEEKDAY line existed above the numeral
+  purely to carry the per-ceremony `EventEmblem`. Fixed by moving the
+  emblem to stand alone above the numeral, and merging WEEKDAY + TIME
+  onto one line below month/year ("THURSDAY · 7:00 PM") — that
+  consolidation removed a whole line, which is what paid for month/year
+  growing from 17–21px to a genuinely large 19–25px without the block
+  getting taller overall. Venue (14–16px→16–19px) and address
+  (14–15px→14–16px) were also bumped. The measured artwork-panel bounds
+  were widened slightly too (39.5–68dvh → 38–70dvh) — still inside the
+  actual measured ≈37–72% safe zone, just using less of the extra safety
+  margin the previous pass banked, since this pass's size increases
+  needed real room back from somewhere. `TitleScene`'s own title/kicker/
+  subtitle were also substantially enlarged (kicker 15–17px→16–19px,
+  title 34–48px→38–60px, subtitle 15–17px→17–20px) and the JharokhaArch
+  background ghost went from an almost-invisible 0.055 opacity/300px to
+  a genuinely visible 0.1 opacity/420px spanning behind the whole text
+  block — the previous version's "huge blank paper, tiny text" problem
+  was as much about an under-used background as it was about type size.
 - `CouplePhotoExperience.tsx` — the album as a VERTICAL REEL: `AlbumLeaf`
   renders ONE photograph per full-screen `data-reel-scene` 100dvh section, so
   the existing pager consumes the photographs one deliberate gesture at a
-  time and only after the LAST photograph does the page hand off below the
-  reel (Venue → RSVP → Closing). **NO CONTROLS AT ALL — no arrows, chevrons,
+  time, then hands off to Venue — now itself a `data-reel-scene`, not a
+  hand-off boundary; the reel runs the full document through Closing (see
+  the reel architecture note above). **NO CONTROLS AT ALL — no arrows, chevrons,
   dots, buttons or horizontal track** — and no pointer handlers anywhere, so
   vertical touch/wheel stays entirely with the pager; the scenes keep the
   default `touch-action: pan-x pinch-zoom` (the old `touch-action: none`
@@ -614,10 +646,19 @@ the card is behind it, not the video.
   sequence is always a real multi-photograph album; uploaded photographs
   replace the whole set, and a page whose file fails drops out via the
   `broken` set (keyed by the image path).
-- `VenueSection.tsx` — the Venue page: `venue.image || theme.assets.venueImage`
-  under a deep warm veil with ivory type (`hasImage` swaps the whole palette).
+- `VenueSection.tsx` — the Venue page: `venue.image || theme.assets.venueImage`.
   Now a fixed `100dvh` `data-reel-scene` (was `minHeight:"92dvh"`, plain
   document flow) — see the reel architecture note above.
+  **Pass — recomposed into two zones, not text-over-a-darkened-photo**:
+  the photo (or, absent one, an enlarged JharokhaArch) now fills an
+  upper visual zone with only a light bottom-edge fade, not a heavy veil
+  across the whole image; a SOLID ivory information panel — dark ink on
+  light paper, not ivory-on-photo — sits at the bottom, sized by its own
+  content (kicker/name/address/time/map button), which lands close to
+  the requested ~60/40 visual split without hard-coding a percentage.
+  The `layout` prop's `"jharokha"` vs `"minimal"` distinction is now
+  "arch shown in the upper zone" vs "not," rather than "arch inside the
+  old framed box."
 - `RsvpSection.tsx` — now a fixed `100dvh` `data-reel-scene` too, flex-
   centered so both the compact default form and the short confirmed/
   declined states sit centered rather than pinned to the top. Its
@@ -631,6 +672,15 @@ the card is behind it, not the video.
   paper world. `object-position: center 38%`; falls back to the paper
   world if the artwork fails. Now a fixed `100dvh` `data-reel-scene`
   (was `minHeight:"96dvh"`).
+  **Pass — couple names substantially enlarged (30–46px → 40–62px)**
+  per an explicit "the couple names must be the strongest visual
+  element on the page" direction — a modest nudge would still have read
+  as an afterthought next to how large names get treated everywhere
+  else in the invitation. Closing message bumped 15–18px→17–21px,
+  family message 14–15px→14–16px. This was explicitly scoped to
+  typography/spacing only — the background/veil mechanism (which is
+  what actually makes the text system tolerant of whatever photo ends
+  up in `closingImage`) was deliberately left untouched.
 - `ViewOnMapButton.tsx` — the shared premium 3D "View on Map" action
   (the same raised-ivory-card recipe as Countdown's boxes: layered
   inset+outer shadows, hairline gold border, no glassmorphism). Used by
@@ -638,6 +688,15 @@ the card is behind it, not the video.
   each drew its own plain underlined-text-style link ("Find the way" /
   "View Directions"); now one component, one label, one CSS hover/press
   treatment (`.view-on-map-button` in index.css).
+  **Pass — true horizontal oval, not a rounded rectangle**: swapped the
+  fixed `8–12px` corner radius for a full capsule (`borderRadius: 999`,
+  clamped by the browser to exact half-height at any size) and made the
+  padding deliberately wider than tall (`11px 26px`, was `14px 28px`),
+  so the shape itself reads as an oval rather than a squared plaque; also
+  nudged `EventScene`'s own gap above the button down (`marginTop`
+  `clamp(5,1.1dvh,8)` → `clamp(3,0.7dvh,5)`) so it sits higher inside the
+  artwork's measured text-safe panel (which ends at `bottom: 30dvh`),
+  with more breathing room beneath it, not less.
 - `decor/Ornaments.tsx` — the illustrated SVG language: CornerFloret/
   CornerArabesque/ThemeCorner, HairRule (tapered rule + dot/diamond node),
   Divider (emblem + rules), Emblem (lotus/star/geometric), AmpersandOrnament,
@@ -661,7 +720,18 @@ the card is behind it, not the video.
   swelling) share ONE 3.2s clock. Non-interactive by design (the couple
   scene wraps it in its arrow button; the date scene positions it in the
   empty band below the countdown). Reduced motion removes ONLY the
-  animation — the cue stays bright, static and fully visible. (History: the
+  animation — the cue stays bright, static and fully visible.
+  **Pass — `hideLabel` prop, arrow-only mode**: the Couple page's own
+  cue is now rendered with `hideLabel` (no wordmark at all), per an
+  explicit "arrow only, no text" direction for that scene — added as an
+  opt-in prop rather than removing the label globally, so `DateReveal`'s
+  existing labeled usage is untouched. The Couple page's local dark
+  contrast-backing behind the arrow (in `CoupleIntro.tsx`) was also
+  deepened and pulled in tighter around just the arrow's own footprint
+  (was sized to also cover the now-removed wordmark) — the report was
+  that the ivory arrow still merged into the gate film's pale ending
+  frame; the fix is a darker, tighter pool exactly behind the mark, not
+  a brighter mark. (History: the
   old bare chevron pulsed with the retired `scrollBounce`, whose 0.28
   opacity floor made a thin gold stroke read as "not there" over the
   artwork's dark lower band.)
@@ -674,6 +744,35 @@ the card is behind it, not the video.
   positioned directly behind the arrow+wordmark inside its button — a
   guaranteed local contrast boost regardless of the exact pixel colour
   behind it at that moment, without turning the mark into a pill/plate.
+- **Global idle-scroll cue** — a NEW, separate system from `ScrollCue`
+  (which stays the couple/date scenes' own contextual invitation):
+  `lib/idleActivity.ts` keeps one shared "last activity" clock via a
+  single lazily-mounted set of passive `wheel`/`touchstart`/`touchmove`/
+  `pointerdown`/`keydown`/`scroll` window listeners (never
+  `preventDefault`, never touches scroll position — cannot affect
+  `useReelPager`); `lib/useIdleScrollCue.ts` is a per-scene hook —
+  `useIdleScrollCue(active, suppressed?)` — that takes each scene's OWN
+  existing `inView` signal and shows true once ~7s pass with no activity
+  since the scene became active (resets instantly on every `active`
+  change, masked by `active` in its return rather than an extra
+  setState, so it hides the instant a scene leaves view); `IdleDownArrow.tsx`
+  is the arrow-only visual (no wordmark, `pointer-events:none`,
+  `aria-hidden`, safe-area-aware `bottom`, gold-on-cream by default for
+  this invitation's light paper scenes) with its own `idleArrowSpring`
+  keyframe in index.css — mostly still, one gentle spring dip per 3.6s
+  cycle, not a continuous bounce; `animation:"none"` under reduced
+  motion (cue stays static, never hidden). Wired into `TitleScene` and
+  every `EventScene` (EventsSection.tsx) and `RsvpSection.tsx`
+  (suppressed while `phase==="submitting"`) — each already had its own
+  `inView`, so no new observers were added. Deliberately NOT wired into:
+  `ClosingSection` (the reel's last scene — nothing left to scroll to),
+  `VenueSection` (its map button already occupies the same bottom
+  safe-area band), `CouplePhotoExperience`/`AlbumLeaf` (same collision
+  with the per-photo caption footer), and `DateReveal`/`CoupleIntro`
+  (each already has its own contextual `ScrollCue`, gated so it can
+  never show during the scratch interaction or before the gate video
+  ends — adding this system there would duplicate, not improve, the
+  existing cue).
 - `CelebrationParticles.tsx` — REDESIGNED into ONE system (no `mode` prop
   any more — the old `"fall"`/`"burst"` modes, and their
   `celebrationFall`/`celebrationBurst` keyframes in index.css, are gone;

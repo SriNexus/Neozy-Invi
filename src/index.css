@@ -260,6 +260,14 @@ body {
     0 12px 22px rgba(60, 42, 16, 0.26);
 }
 
+/* a real, visible keyboard-focus ring — distinct from (and in addition
+   to) the hover elevation above, since relying on elevation alone is
+   not a sufficient focus indicator */
+.view-on-map-button:focus-visible {
+  outline: 2px solid var(--gold-invite);
+  outline-offset: 2px;
+}
+
 .view-on-map-button:active {
   transform: translateY(1px);
   box-shadow:
@@ -372,6 +380,30 @@ body {
   50% {
     opacity: 1;
     transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+/* ─── Idle down-arrow: one gentle spring settle per cycle ───
+   Mostly still (rest through 0–55% of the cycle), then a single soft
+   spring dip-and-settle — deliberately NOT a continuous bounce/pulse,
+   so it reads as an occasional, restrained nudge rather than a flashing
+   or "gaming" indicator. Reduced motion is handled in JS (the component
+   simply never applies this animation), matching ScrollCue's own
+   pattern. */
+@keyframes idleArrowSpring {
+  0%,
+  55%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  70% {
+    transform: translateX(-50%) translateY(6px);
+  }
+  82% {
+    transform: translateX(-50%) translateY(-2px);
+  }
+  92% {
+    transform: translateX(-50%) translateY(1px);
   }
 }
 

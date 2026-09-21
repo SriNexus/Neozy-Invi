@@ -8,6 +8,8 @@ import { prefersReducedMotion } from "../lib/motion";
 import { EventEmblem, HairRule, JharokhaArch, ThemeCorner } from "./decor/Ornaments";
 import { motifForEvent } from "../lib/eventMotif";
 import ViewOnMapButton from "./ViewOnMapButton";
+import IdleDownArrow from "./IdleDownArrow";
+import { useIdleScrollCue } from "../lib/useIdleScrollCue";
 
 /**
  * The Celebrations — the events chapter as a reel of designed pages
@@ -218,6 +220,7 @@ function PageEnvelope() {
    ───────────────────────────────────────────────────────────── */
 function TitleScene({ reduce }: { reduce: boolean }) {
   const { ref, inView } = useInView<HTMLElement>(0.3);
+  const idle = useIdleScrollCue(inView);
   const step = (i: number): CSSProperties => {
     if (reduce) return { opacity: 1 };
     return {
@@ -234,17 +237,35 @@ function TitleScene({ reduce }: { reduce: boolean }) {
       className="relative w-full overflow-hidden"
       style={{ height: "100dvh" }}
     >
-      {/* the page — paper ground + the arch's faint silhouette */}
+      {/* the page — paper ground. The arch's silhouette used to be a
+          faint, easily-missed "ghost" pinned to the bottom edge
+          (opacity 0.055, 300px, `items-end`) — exactly the kind of
+          decorative detail so subtle it reads as empty space rather
+          than a considered composition. It's now a genuinely visible
+          architectural presence spanning behind the whole text block —
+          still a background element, never competing with the text for
+          attention, but now doing real compositional work instead of
+          leaving the page feeling like "blank paper + tiny text." */}
       <div aria-hidden="true" className="absolute inset-0" style={{ zIndex: 0, background: PAPER }} />
       <div
         aria-hidden="true"
-        className="absolute inset-0 pointer-events-none flex items-end justify-center"
-        style={{ zIndex: 1, paddingBottom: "4dvh" }}
+        className="absolute inset-0 pointer-events-none flex items-center justify-center"
+        style={{ zIndex: 1 }}
       >
-        <JharokhaArch width={300} style={{ opacity: 0.055 }} />
+        <JharokhaArch width={420} style={{ opacity: 0.1, color: "var(--gold-invite)" }} />
       </div>
       <PageEnvelope />
 
+      {/* PASS — the previous composition mechanically centred a fairly
+          small text cluster in the exact middle of a 100dvh page,
+          leaving large, unintentional-feeling empty margins above and
+          below it (the literal "huge blank paper, tiny text" complaint).
+          Fixed not by centring differently but by making the content
+          itself substantially larger and more generously spaced, so the
+          GROUP now occupies real visual territory — the fix this brief
+          asks for is "increase important information substantially and
+          use space intentionally," not "reposition text within empty
+          space." */}
       <div
         className="absolute inset-0 flex flex-col items-center justify-center text-center"
         style={{
@@ -259,10 +280,9 @@ function TitleScene({ reduce }: { reduce: boolean }) {
           style={{
             ...step(0),
             color: "var(--gold-invite-dim)",
-            // kept above the parent-name baseline (13px), not just at it
-            fontSize: "clamp(15px, 3.2vw, 17px)",
-            letterSpacing: "0.45em",
-            marginLeft: "0.45em",
+            fontSize: "clamp(16px, 3.6vw, 19px)",
+            letterSpacing: "0.42em",
+            marginLeft: "0.42em",
             textTransform: "uppercase",
           }}
         >
@@ -271,37 +291,43 @@ function TitleScene({ reduce }: { reduce: boolean }) {
         <h2
           style={{
             ...step(1),
-            marginTop: 16,
+            marginTop: 22,
             fontFamily: "var(--font-couple)",
             fontVariationSettings: '"opsz" 96, "SOFT" 40, "WONK" 0',
             fontWeight: 500,
             color: "var(--text-primary)",
-            fontSize: "clamp(34px, 9.6vw, 48px)",
-            letterSpacing: "0.01em",
+            // no forced line break — natural wrapping (this is 3 short
+            // words, never a single unbreakable one) means the browser
+            // always finds a fit at any of the 360–412px widths this
+            // must work at, rather than risking a hand-guessed break
+            // clipping on the narrowest one
+            fontSize: "clamp(38px, 11.5vw, 60px)",
+            letterSpacing: "0.005em",
             lineHeight: 1.08,
           }}
         >
           Our Wedding Events
         </h2>
-        <div style={{ ...step(2), marginTop: 26 }}>
-          <HairRule width={160} node="diamond" style={{ opacity: 0.9 }} />
+        <div style={{ ...step(2), marginTop: 34 }}>
+          <HairRule width={180} node="diamond" style={{ opacity: 0.9 }} />
         </div>
         <p
           style={{
             ...step(3),
-            marginTop: 22,
-            maxWidth: 300,
-            color: "var(--text-tertiary)",
+            marginTop: 28,
+            maxWidth: 340,
+            color: "var(--text-secondary)",
             fontFamily: "'Cormorant', serif",
             fontStyle: "italic",
-            fontSize: "clamp(15px, 3.6vw, 17px)",
-            lineHeight: 1.65,
+            fontSize: "clamp(17px, 4.2vw, 20px)",
+            lineHeight: 1.6,
           }}
         >
           Four days of ceremony, music and love — we would be honoured by
           your presence at each.
         </p>
       </div>
+      <IdleDownArrow shown={idle} reduceMotion={reduce} />
     </section>
   );
 }
@@ -320,6 +346,7 @@ function EventScene({
   const theme = useActiveTheme();
   const sceneRef = useRef<HTMLElement | null>(null);
   const [inView, setInView] = useState(false);
+  const idle = useIdleScrollCue(inView);
   const d = parseEventDate(event.date);
   const weekday = d.toLocaleDateString("en-US", { weekday: "long" });
   const month = d.toLocaleDateString("en-US", { month: "long" }).toUpperCase();
@@ -416,23 +443,29 @@ function EventScene({
           sampled directly from the shipped 768×1376 photographs
           (haldi/mehendi/sangeet/wedding/reception all agree closely),
           that panel sits at ≈37–72% of image height and ≈16–83% of
-          width. `top`/`bottom` below use a deliberately conservative
-          39.5–68dvh — the intersection of all five measured ranges,
-          not the loosest one — because `object-fit: cover` height-
-          matches this portrait art on every phone (identical principle
-          to the Couple scene's video: see brain.md "Artwork geometry
-          facts"), so an image-height-% maps directly to the same dvh-%.
-          When there's no artwork (fallback above), the same wrapper
-          just centres in the full viewport instead — plain paper has no
-          fixed panel to target. */}
+          width. `top`/`bottom` below use 38–70dvh — inside that
+          measured ≈37–72% range, but with less extra safety margin
+          pulled in than the previous pass (was 39.5–68dvh): this round
+          substantially enlarges several tiers (month/year, venue,
+          address) for readability, which needed real room back from
+          somewhere, and the actual measured artwork safe-zone had more
+          of it available than the earlier, more conservative bound was
+          using. Still never the loosest possible reading of the
+          measurement. `object-fit: cover` height-matches this portrait
+          art on every phone (identical principle to the Couple scene's
+          video: see brain.md "Artwork geometry facts"), so an image-
+          height-% maps directly to the same dvh-%. When there's no
+          artwork (fallback above), the same wrapper just centres in the
+          full viewport instead — plain paper has no fixed panel to
+          target. */}
       <div
         className="absolute inset-x-0 flex flex-col items-center text-center"
         style={
           art
             ? {
                 zIndex: 10,
-                top: "39.5dvh",
-                bottom: "32dvh",
+                top: "38dvh",
+                bottom: "30dvh",
                 justifyContent: "center",
                 padding: "0 clamp(20px, 6vw, 32px)",
                 userSelect: "none",
@@ -478,52 +511,33 @@ function EventScene({
               Save the Date/welcome hero moments (see DAY_GOLD_* above) —
               the strongest, most deliberate voice on the page.
 
-              PASS — date hierarchy fixed: the numeral used to sit on the
-              SAME row as the month, baseline-aligned, which meant the
-              month had to stay small (14–16px) just to fit next to a
-              32–46px numeral — exactly the "huge 4, tiny December"
-              complaint. The numeral now has its own line, and "MONTH
-              YEAR" is its own clearly-readable line beneath it (bumped
-              from a 14–16px caption size to a real LEVEL-2 tier) —
-              LEVEL 1 (numeral) → LEVEL 2 (month + year) → LEVEL 3
-              (weekday / time / venue) → LEVEL 4 (address), all still
-              ≥14px. Every gap in this block was re-measured and trimmed
-              slightly to buy back the vertical room this restructure
-              costs, so the panel still fits its measured ≈28.5dvh area
-              on 375px-class phones.
-
-              The weekday line carries this ceremony's own hand-drawn
-              emblem (`EventEmblem`, keyed by the SAME `motif` already
-              resolved for the artwork lookup) inline, at zero extra
-              height cost — unchanged from the previous pass. */}
+              PASS — date hierarchy fixed a second time: the previous
+              pass already moved the numeral onto its own line, but
+              "MONTH YEAR" was still only a modest step up from caption
+              size, and WEEKDAY sat on a separate line above the numeral
+              purely to carry the per-ceremony emblem — an extra line
+              that cost real vertical room for no informational gain.
+              Restructured to match the requested priority order exactly
+              (numeral → month/year → day+time → venue → address → map):
+              the emblem now sits alone, small, above the numeral;
+              WEEKDAY and TIME are combined onto ONE line below month/
+              year ("THURSDAY · 7:00 PM") instead of two separate lines;
+              and that consolidation is what pays for a genuinely larger
+              month/year tier (17–21px → 19–25px) without growing the
+              block's total height. LEVEL 1 (numeral) → LEVEL 2 (month +
+              year) → LEVEL 3 (weekday + time / venue) → LEVEL 4
+              (address), all still ≥14px. */}
           <div style={{ ...step(1), display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <span
-              className="flex items-center justify-center"
-              style={{ gap: "0.45em" }}
-            >
-              <EventEmblem motif={motif} size={15} />
-              <span
-                className="font-sc"
-                style={{
-                  color: "var(--gold-invite-dim)",
-                  // LEVEL 3 — kept above the parent-name baseline (13px)
-                  fontSize: "clamp(14px, 3vw, 15.5px)",
-                  letterSpacing: "0.3em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {weekday}
-              </span>
-            </span>
+            <EventEmblem motif={motif} size={19} />
 
-            {/* LEVEL 1 — the hero numeral, now alone on its own line */}
+            {/* LEVEL 1 — the hero numeral */}
             <span
               style={{
-                marginTop: "clamp(4px, 1dvh, 7px)",
+                marginTop: "clamp(2px, 0.6dvh, 5px)",
                 fontFamily: "var(--font-couple)",
                 fontVariationSettings: '"opsz" 96, "SOFT" 50, "WONK" 1',
                 fontWeight: 600,
-                fontSize: "clamp(32px, min(10.2vw, 11.6dvh), 46px)",
+                fontSize: "clamp(34px, min(10.6vw, 12dvh), 48px)",
                 lineHeight: 0.9,
                 background: DAY_GOLD_FILL,
                 WebkitBackgroundClip: "text",
@@ -536,50 +550,49 @@ function EventScene({
               {dayNum}
             </span>
 
-            {/* LEVEL 2 — month + year together, clearly readable on its
-                own line (was riding along the numeral's row at caption
-                size; now a real secondary tier) */}
+            {/* LEVEL 2 — month + year, now a genuinely large, confident
+                secondary tier rather than a caption */}
             <span
               className="font-sc"
               style={{
                 marginTop: "clamp(1px, 0.3dvh, 3px)",
                 color: "var(--gold-invite)",
-                fontSize: "clamp(17px, 4.4vw, 21px)",
+                fontSize: "clamp(19px, 5vw, 25px)",
                 fontWeight: 600,
-                letterSpacing: "0.2em",
-                marginLeft: "0.2em",
+                letterSpacing: "0.16em",
+                marginLeft: "0.16em",
               }}
             >
               {month} {year}
             </span>
 
-            {/* the wedding ceremony's own exact time isn't confirmed yet
-                (see EventData.time and invitation.ts) — this line simply
-                doesn't render rather than showing a guessed value */}
-            {event.time && (
-              <span
-                className="font-sc"
-                style={{
-                  marginTop: "clamp(3px, 0.8dvh, 6px)",
-                  color: "var(--gold-invite)",
-                  // LEVEL 3
-                  fontSize: "clamp(14px, 2.8vw, 15.5px)",
-                  fontWeight: 600,
-                  letterSpacing: "0.2em",
-                  marginLeft: "0.2em",
-                  textTransform: "uppercase",
-                }}
-              >
-                {event.time}
-              </span>
-            )}
+            {/* LEVEL 3 — weekday + time together on one line. The
+                wedding ceremony's own exact time isn't confirmed yet
+                (see EventData.time and invitation.ts), so that half
+                simply doesn't render rather than showing a guessed
+                value — the weekday still stands alone in that case. */}
+            <span
+              className="font-sc"
+              style={{
+                marginTop: "clamp(3px, 0.8dvh, 6px)",
+                color: "var(--gold-invite)",
+                fontSize: "clamp(15px, 3.4vw, 17px)",
+                fontWeight: 600,
+                letterSpacing: "0.2em",
+                marginLeft: "0.2em",
+                textTransform: "uppercase",
+              }}
+            >
+              {weekday}
+              {event.time && ` · ${event.time}`}
+            </span>
           </div>
 
           {/* a restrained gold hairline between the date and venue
               clusters — a fraction of a diamond node, not a full rule
               across the page, so the page reads as composed rather than
               two stacked text blocks. */}
-          <div style={{ ...step(2), marginTop: "clamp(4px, 1dvh, 7px)" }}>
+          <div style={{ ...step(2), marginTop: "clamp(3px, 0.8dvh, 6px)" }}>
             <HairRule width="clamp(52px, 15vw, 76px)" node="diamond" style={{ opacity: 0.85 }} />
           </div>
 
@@ -592,10 +605,10 @@ function EventScene({
               className="font-sc"
               style={{
                 color: "var(--gold-invite-dim)",
-                fontSize: "clamp(14px, 3.4vw, 16px)",
+                fontSize: "clamp(16px, 4vw, 19px)",
                 fontWeight: 600,
-                letterSpacing: "0.18em",
-                marginLeft: "0.22em",
+                letterSpacing: "0.14em",
+                marginLeft: "0.16em",
                 textTransform: "uppercase",
               }}
             >
@@ -609,7 +622,8 @@ function EventScene({
                   color: "var(--text-tertiary)",
                   fontFamily: "'Cormorant', serif",
                   fontStyle: "italic",
-                  fontSize: "clamp(14px, 2.8vw, 15px)",
+                  fontSize: "clamp(14px, 3vw, 16px)",
+                  lineHeight: 1.4,
                 }}
               >
                 {event.address}
@@ -617,15 +631,21 @@ function EventScene({
             )}
           </div>
 
-          {/* the action — now an obviously-pressable premium card
-              instead of a text-like link (see ViewOnMapButton.tsx) */}
+          {/* the action — now an obviously-pressable premium oval plaque
+              instead of a text-like link (see ViewOnMapButton.tsx).
+              Nudged closer to the venue/address block above it (was
+              clamp(5px,1.1dvh,8px)) so the button sits higher within the
+              artwork's own text-safe area, leaving visible breathing
+              room beneath it before the panel's own lower bound rather
+              than crowding it. */}
           {event.directionsUrl && (
-            <div style={{ ...step(3), marginTop: "clamp(6px, 1.4dvh, 10px)" }}>
+            <div style={{ ...step(3), marginTop: "clamp(3px, 0.7dvh, 5px)" }}>
               <ViewOnMapButton href={event.directionsUrl} ariaLabel={`View ${event.venue} on Google Maps`} />
             </div>
           )}
         </div>
       </div>
+      <IdleDownArrow shown={idle} reduceMotion={reduce} />
     </section>
   );
 }

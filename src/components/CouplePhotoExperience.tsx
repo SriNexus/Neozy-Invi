@@ -124,6 +124,8 @@ export default function CouplePhotoExperience({
           >
             Our Story
           </span>
+          {/* canonical guest-facing name order: Gunjan (name2) then
+              Abhay (name1) — matches CoupleIntro.tsx's own render order */}
           <h2
             className="mt-3"
             style={{
@@ -133,7 +135,7 @@ export default function CouplePhotoExperience({
               fontWeight: 500,
             }}
           >
-            {couple.name1}
+            {couple.name2}
           </h2>
           <p
             style={{
@@ -153,7 +155,7 @@ export default function CouplePhotoExperience({
               fontWeight: 500,
             }}
           >
-            {couple.name2}
+            {couple.name1}
           </h2>
           <p
             className="mt-5"
@@ -173,7 +175,8 @@ export default function CouplePhotoExperience({
   }
 
   const total = String(count).padStart(2, "0");
-  const fallbackCaption = `${couple.name1} & ${couple.name2}`;
+  // canonical guest-facing name order: Gunjan (name2) then Abhay (name1)
+  const fallbackCaption = `${couple.name2} & ${couple.name1}`;
 
   return (
     <>

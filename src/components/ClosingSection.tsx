@@ -106,7 +106,7 @@ export default function ClosingSection({
           style={{
             ...step(0),
             color: "var(--gold-invite-dim)",
-            fontSize: "clamp(14px, 3vw, 16px)",
+            fontSize: "clamp(15px, 3.2vw, 17px)",
             letterSpacing: "0.4em",
             marginLeft: "0.4em",
             textTransform: "uppercase",
@@ -119,47 +119,65 @@ export default function ClosingSection({
           <JharokhaArch width={68} style={{ opacity: 0.7 }} />
         </div>
 
+        {/* PASS — the couple's names are the invitation's literal last
+            words and should read as the strongest visual element on the
+            page, per an explicit "main couple names must be the
+            strongest visual element" direction — bumped substantially
+            (30–46px → 40–62px) rather than nudged, since a modest
+            increase here would still have left the closing page's own
+            hero moment reading as an afterthought next to how large
+            names get treated everywhere else in the invitation.
+
+            NAME ORDER — canonical guest-facing order is Gunjan (bride,
+            `couple.name2`) then Abhay (groom, `couple.name1`), matching
+            CoupleIntro.tsx's own render order (bride's NameBlock first,
+            groom's second). This page previously rendered name1 then
+            name2 — i.e. Abhay then Gunjan — inconsistent with
+            CoupleIntro. The underlying `name1`/`name2` data fields keep
+            their existing semantic roles (groom/bride, tied to
+            groomParents/brideParents) unchanged; only the DISPLAY order
+            here was swapped to match. */}
         <h2
-          className="mt-4"
+          className="mt-5"
           style={{
             fontFamily: "var(--font-display)",
             fontStyle: "italic",
-            fontSize: "clamp(30px,8.4vw,46px)",
+            fontSize: "clamp(40px,11.5vw,62px)",
             fontWeight: 500,
-            lineHeight: 1.12,
+            lineHeight: 1.1,
             ...CLOSING_NAME_GRADIENT,
             ...step(2),
           }}
         >
-          {couple.name1}
+          {couple.name2}
         </h2>
         <div className="my-1" style={{ color: "var(--gold-invite)", ...step(2) }}>
-          <AmpersandOrnament size={18} />
+          <AmpersandOrnament size={20} />
         </div>
         <h2
           style={{
             fontFamily: "var(--font-display)",
             fontStyle: "italic",
-            fontSize: "clamp(30px,8.4vw,46px)",
+            fontSize: "clamp(40px,11.5vw,62px)",
             fontWeight: 500,
-            lineHeight: 1.12,
+            lineHeight: 1.1,
             ...CLOSING_NAME_GRADIENT,
             ...step(3),
           }}
         >
-          {couple.name2}
+          {couple.name1}
         </h2>
 
-        <Divider emblem={theme.motifs.divider} width={130} className="my-4" style={step(4)} />
+        <Divider emblem={theme.motifs.divider} width={130} className="my-5" style={step(4)} />
 
         <p
           style={{
             fontFamily: "var(--font-display)",
             fontStyle: "italic",
             color: "var(--text-secondary)",
-            fontSize: "clamp(15px,3.6vw,18px)",
-            lineHeight: 1.6,
-            maxWidth: 340,
+            fontSize: "clamp(17px,4.2vw,21px)",
+            lineHeight: 1.55,
+            maxWidth: 360,
             ...step(4),
           }}
         >
@@ -171,8 +189,8 @@ export default function ClosingSection({
             className="font-sc mt-4"
             style={{
               color: "var(--gold-invite-dim)",
-              // kept above the parent-name baseline (13px), not just at it
-              fontSize: "clamp(14px,2.8vw,15px)",
+              // kept comfortably above the parent-name baseline (13px)
+              fontSize: "clamp(14px,3vw,16px)",
               letterSpacing: "0.14em",
               textTransform: "uppercase",
               ...step(5),

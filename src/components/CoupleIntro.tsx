@@ -544,32 +544,37 @@ export default function CoupleIntro({
         }}
       >
         {/* a restrained dark pool directly behind the mark — the report
-            was that the ivory arrow merged into the film's own pale,
-            near-white held final frame. The section-wide dim above helps
-            everywhere, but this adds guaranteed local contrast exactly
-            where the mark sits, regardless of what colour the frame
-            happens to hold at that exact spot. Radial-only, no edge, no
-            border, no shape — it must read as a soft shadow the mark is
-            floating on, never a pill/plate/CTA backing. */}
+            was that the ivory arrow still merged into the film's own
+            pale, near-white held final frame. Brightening the arrow
+            itself was never going to fix this (a brighter mark on a
+            near-white frame still has no edge); what actually separates
+            it is a darker, tighter pool concentrated exactly on the
+            arrow's own small footprint, so there is guaranteed contrast
+            right where the mark sits regardless of what colour the frame
+            holds there. Deepened and drawn in tighter around just the
+            arrow (was a wider, shallower pool sized to also cover the
+            wordmark below it — now removed, see `hideLabel` on
+            ScrollCue) — still radial-only, no edge, no border, no shape,
+            reading as a soft shadow the mark floats on, never a
+            pill/plate/CTA backing. */}
         <span
           aria-hidden="true"
           className="absolute"
           style={{
             left: "50%",
             top: "50%",
-            width: "clamp(150px, 36dvw, 210px)",
-            height: "clamp(130px, 26dvh, 175px)",
+            width: "clamp(96px, 22dvw, 130px)",
+            height: "clamp(84px, 16dvh, 112px)",
             transform: "translate(-50%, -50%)",
             background:
-              "radial-gradient(closest-side, rgba(18,13,9,0.4) 0%, rgba(18,13,9,0.2) 52%, rgba(18,13,9,0) 82%)",
+              "radial-gradient(closest-side, rgba(14,10,7,0.58) 0%, rgba(14,10,7,0.34) 55%, rgba(14,10,7,0) 85%)",
             pointerEvents: "none",
           }}
         />
-        <ScrollCue
-          shown={reached("arrow")}
-          reduceMotion={reduceMotion}
-          label="Begin Our Story"
-        />
+        {/* arrow only, per the invitation-wide idle-cue direction: this
+            page's existing cue is IMPROVED (stronger, separate backing)
+            rather than duplicated with a second arrow component. */}
+        <ScrollCue shown={reached("arrow")} reduceMotion={reduceMotion} hideLabel />
       </button>
     </section>
   );

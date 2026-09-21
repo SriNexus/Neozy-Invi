@@ -32,17 +32,24 @@ import type { CSSProperties } from "react";
  *
  * Reduced motion removes ONLY the animation — the cue stays fully visible,
  * bright and static. A scroll cue must never be hidden for reduced motion.
+ *
+ * `hideLabel` drops the wordmark entirely, leaving arrow-only — for a
+ * spot (the Couple page's own cue) that must read as a pure directional
+ * mark with no text, without standing up a second, competing arrow
+ * component just to lose the words.
  */
 export default function ScrollCue({
   shown,
   reduceMotion,
   label = "Begin Our Story",
+  hideLabel = false,
   style,
 }: {
   /** drives the wordmark's entrance and the pulse */
   shown: boolean;
   reduceMotion: boolean;
   label?: string;
+  hideLabel?: boolean;
   style?: CSSProperties;
 }) {
   const glow =
@@ -109,37 +116,39 @@ export default function ScrollCue({
           </svg>
         </span>
 
-        <span
-          style={{
-            display: "block",
-            marginTop: "clamp(7px, 1.1dvh, 11px)",
-            fontFamily: "var(--font-invite-label)",
-            fontWeight: 600,
-            color: "var(--ivory, #f7f2e6)",
-            // global floor: no readable text anywhere below the
-            // parent-name baseline (13px) — this label used to sit
-            // under it at the narrowest widths
-            fontSize: "clamp(13px, 3vw, 15px)",
-            letterSpacing: "0.32em",
-            // tracking compensation — the established label pattern
-            marginLeft: "0.32em",
-            textTransform: "uppercase",
-            whiteSpace: "nowrap",
-            // a tight dark offset for the painting's light areas, then a warm
-            // halo so the words carry their own light on the dark ones
-            textShadow:
-              "0 1px 2px rgba(24,16,8,0.62), 0 0 14px rgba(255,224,150,0.6)",
-            // the entrance — a whisper of a rise, one beat after the arrow
-            opacity: shown ? 1 : 0,
-            transform: shown ? "translateY(0)" : "translateY(6px)",
-            transition: reduceMotion
-              ? "none"
-              : "opacity 0.9s ease, transform 1.1s cubic-bezier(0.22, 1, 0.36, 1)",
-            transitionDelay: reduceMotion || !shown ? "0ms" : "0.28s",
-          }}
-        >
-          {label}
-        </span>
+        {!hideLabel && (
+          <span
+            style={{
+              display: "block",
+              marginTop: "clamp(7px, 1.1dvh, 11px)",
+              fontFamily: "var(--font-invite-label)",
+              fontWeight: 600,
+              color: "var(--ivory, #f7f2e6)",
+              // global floor: no readable text anywhere below the
+              // parent-name baseline (13px) — this label used to sit
+              // under it at the narrowest widths
+              fontSize: "clamp(13px, 3vw, 15px)",
+              letterSpacing: "0.32em",
+              // tracking compensation — the established label pattern
+              marginLeft: "0.32em",
+              textTransform: "uppercase",
+              whiteSpace: "nowrap",
+              // a tight dark offset for the painting's light areas, then a warm
+              // halo so the words carry their own light on the dark ones
+              textShadow:
+                "0 1px 2px rgba(24,16,8,0.62), 0 0 14px rgba(255,224,150,0.6)",
+              // the entrance — a whisper of a rise, one beat after the arrow
+              opacity: shown ? 1 : 0,
+              transform: shown ? "translateY(0)" : "translateY(6px)",
+              transition: reduceMotion
+                ? "none"
+                : "opacity 0.9s ease, transform 1.1s cubic-bezier(0.22, 1, 0.36, 1)",
+              transitionDelay: reduceMotion || !shown ? "0ms" : "0.28s",
+            }}
+          >
+            {label}
+          </span>
+        )}
       </span>
     </span>
   );

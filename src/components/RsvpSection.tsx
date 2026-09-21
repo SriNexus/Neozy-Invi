@@ -1,9 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import type { EventData, RsvpConfig } from "../data/invitation";
 import { rsvpService } from "../services/rsvp";
 import { useActiveTheme } from "../data/useTheme";
 import { Divider, ThemeCorner } from "./decor/Ornaments";
+import { prefersReducedMotion } from "../lib/motion";
+import { useIdleScrollCue } from "../lib/useIdleScrollCue";
+import IdleDownArrow from "./IdleDownArrow";
 
 type Phase = "form" | "submitting" | "confirmed" | "declined";
 
@@ -60,6 +63,7 @@ export default function RsvpSection({
 }) {
   const theme = useActiveTheme();
   const { ref, inView } = useInView<HTMLDivElement>();
+  const reduce = useMemo(() => prefersReducedMotion(), []);
   const [phase, setPhase] = useState<Phase>("form");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -68,6 +72,8 @@ export default function RsvpSection({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // suppressed mid-submit — an active network transition, not idleness
+  const idle = useIdleScrollCue(inView, phase === "submitting");
 
   if (!config.enabled) return null;
 
@@ -353,6 +359,7 @@ export default function RsvpSection({
           </Frame>
         )}
       </div>
+      <IdleDownArrow shown={idle} reduceMotion={reduce} />
     </section>
   );
 }

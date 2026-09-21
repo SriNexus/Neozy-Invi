@@ -224,7 +224,8 @@ export const invitation: InvitationData = {
   },
   closing: {
     message: "Your presence is the only gift we need. Together with our families, we can't wait to celebrate our forever with you.",
-    familyMessage: "With love — Abhay, Gunjan & our families",
+    // canonical guest-facing name order: Gunjan, then Abhay
+    familyMessage: "With love — Gunjan, Abhay & our families",
   },
   music: {
     src: "/themes/theme-1/audio/wedding-music.mp3",
