@@ -213,27 +213,17 @@ const BASE: Pick<ThemeConfig, "fonts" | "assets" | "motifs" | "layout" | "paperW
     // public/themes/theme-1/images/ updates that ceremony's page.
     eventBackgrounds: { ...EVENT_BACKGROUNDS },
     // The Venue section's own artwork (used only when the invitation has no
-    // venue photograph of its own). ⚠️ NO dedicated venue photograph has
-    // ever actually been produced for Theme 1 — this previously pointed at
-    // a non-existent file (`couple-poster.jpg`), so the Venue section has
-    // been silently rendering its designed "no-photo" jharokha fallback
-    // for every visitor. Left empty on purpose rather than pointed at an
-    // unrelated photo borrowed from another section (that would be the
-    // exact "ambiguous shared asset" problem this file's naming is meant
-    // to avoid) — see PRODUCT_AUDIT.md and IMPLEMENTATION_PLAN.md's open
-    // decisions. A real venue asset should be supplied and this filled in
-    // once Theme 1's asset library is managed through the platform.
-    venueImage: "",
-    // The closing page's artwork. PLACEHOLDER: this now points at
-    // `endsection.jpg`, a plain file COPY of `cover.jpg` (the entry
-    // Cover's own image, untouched at its original path) — a deliberate,
-    // one-time duplication, not the "ambiguous shared filename" problem
-    // this file's naming otherwise guards against. Closing used to
-    // intentionally reuse `cover.jpg` directly ("the invitation closes on
-    // the same portrait it opened on"); the product direction is now a
-    // dedicated final image for this section, so it has its own asset
-    // identity to replace independently, without touching the Cover.
-    // Swap `endsection.jpg` for the real final photograph when ready —
+    // venue photograph of its own). Now a real supplied photograph —
+    // `venue.jpg` (a wide night shot of the decorated venue building and
+    // lawn) — replacing the earlier empty placeholder that made the
+    // Venue section silently render its "no-photo" jharokha fallback for
+    // every visitor.
+    venueImage: `${IMG}venue.jpg`,
+    // The closing page's artwork: `endsection.jpg`, a dedicated ivory/
+    // cream decorative stationery border (gold filigree, hanging lamps,
+    // floral garlands, a maroon peacock band) with an already-blank
+    // cream centre for the closing text to sit on — no longer the
+    // `cover.jpg` copy this once was. Swap the file to update it;
     // nothing else needs to change.
     closingImage: `${IMG}endsection.jpg`,
     // The album's pages, until the couple uploads their own gallery — see

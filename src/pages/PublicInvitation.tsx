@@ -13,7 +13,7 @@ import { useInvitationStore } from "../data/useStore";
 import { useThemeApplication, useActiveTheme } from "../data/useTheme";
 import { getWeddingDate } from "../data/invitation";
 import { prefersReducedMotion } from "../lib/motion";
-import { useReelPager } from "../lib/useReelPager";
+import { useReelPager, type ReelGate } from "../lib/useReelPager";
 
 /**
  * Guest journey:
@@ -80,11 +80,32 @@ export default function PublicInvitation() {
 
   const dateRevealRef = useRef<HTMLDivElement | null>(null);
 
+  // ── Save the Date gate — the reel's own pager consults this on every
+  // forward attempt (see useReelPager.ts's `ReelGate`); it is not a
+  // second navigation system, just one more check the existing decision
+  // flow makes before it commits a forward move. `dateRevealedRef` is a
+  // ref (not state) so DateReveal's own phase changes never re-run the
+  // pager's effect; `blockedSignal` is real state because it drives this
+  // scene's own notice UI, which does need to re-render.
+  const dateRevealedRef = useRef(false);
+  const [blockedSignal, setBlockedSignal] = useState(0);
+  const handleDateRevealedChange = useCallback((v: boolean) => {
+    dateRevealedRef.current = v;
+  }, []);
+  const reelGate: ReelGate = useMemo(
+    () => ({
+      isGated: (el) => el === dateRevealRef.current,
+      canLeave: () => dateRevealedRef.current,
+      onBlocked: () => setBlockedSignal((n) => n + 1),
+    }),
+    [],
+  );
+
   // ONE full-screen scene navigator for the whole cinematic reel. It is
   // armed the moment the guest is allowed to scroll (after the intro's
   // golden arrow appears).
   const reelArmed = revealed && introDone;
-  useReelPager(reelArmed);
+  useReelPager(reelArmed, reelGate);
 
   const weddingDate = useMemo(() => getWeddingDate(invitation), [invitation]);
 
@@ -239,6 +260,8 @@ export default function PublicInvitation() {
             weddingDate={weddingDate}
             bgPoster={theme.assets.dateRevealPoster}
             reduceMotion={reduceMotion}
+            onRevealedChange={handleDateRevealedChange}
+            blockedSignal={blockedSignal}
           />
         </div>
 
@@ -254,7 +277,7 @@ export default function PublicInvitation() {
 
         <VenueSection venue={invitation.venue} layout={theme.layout.venueFallback} />
         <RsvpSection config={invitation.rsvp} events={invitation.events} />
-        <ClosingSection couple={invitation.couple} closing={invitation.closing} />
+        <ClosingSection couple={invitation.couple} closing={invitation.closing} contact={invitation.contact} />
       </div>
 
       {/* ── Audio — never unmounted, never restarted ── */}

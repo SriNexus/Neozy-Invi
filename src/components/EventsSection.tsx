@@ -5,7 +5,7 @@ import type { EventWallpaper } from "../data/themes";
 import { parseEventDate } from "../data/invitation";
 import { useActiveTheme } from "../data/useTheme";
 import { prefersReducedMotion } from "../lib/motion";
-import { EventEmblem, HairRule, JharokhaArch, ThemeCorner } from "./decor/Ornaments";
+import { HairRule, JharokhaArch, ThemeCorner } from "./decor/Ornaments";
 import { motifForEvent } from "../lib/eventMotif";
 import ViewOnMapButton from "./ViewOnMapButton";
 import IdleDownArrow from "./IdleDownArrow";
@@ -519,21 +519,26 @@ function EventScene({
               that cost real vertical room for no informational gain.
               Restructured to match the requested priority order exactly
               (numeral → month/year → day+time → venue → address → map):
-              the emblem now sits alone, small, above the numeral;
               WEEKDAY and TIME are combined onto ONE line below month/
               year ("THURSDAY · 7:00 PM") instead of two separate lines;
               and that consolidation is what pays for a genuinely larger
               month/year tier (17–21px → 19–25px) without growing the
               block's total height. LEVEL 1 (numeral) → LEVEL 2 (month +
               year) → LEVEL 3 (weekday + time / venue) → LEVEL 4
-              (address), all still ≥14px. */}
-          <div style={{ ...step(1), display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <EventEmblem motif={motif} size={19} />
+              (address), all still ≥14px.
 
+              PASS 2 — the per-ceremony `EventEmblem` that used to sit
+              directly above the numeral is REMOVED: at 19px it read as
+              an unidentifiable tiny dot/ornament rather than a legible
+              ceremony icon, and it pushed the numeral down for no
+              informational gain. The numeral is now the flex column's
+              own first element, with no leading margin, so it sits
+              higher and the whole date/venue group reads as more
+              compact and better balanced. */}
+          <div style={{ ...step(1), display: "flex", flexDirection: "column", alignItems: "center" }}>
             {/* LEVEL 1 — the hero numeral */}
             <span
               style={{
-                marginTop: "clamp(2px, 0.6dvh, 5px)",
                 fontFamily: "var(--font-couple)",
                 fontVariationSettings: '"opsz" 96, "SOFT" 50, "WONK" 1',
                 fontWeight: 600,

@@ -252,12 +252,16 @@ body {
 
 .view-on-map-button:hover,
 .view-on-map-button:focus-visible {
-  transform: translateY(-2px);
+  /* a smaller lift + tighter shadow reach than before — scaled down
+     with the button itself (see ViewOnMapButton.tsx "PASS 2"), since
+     the previous hover elevation was tuned for a button roughly twice
+     this size and read as oversized/bulky once the surface shrank */
+  transform: translateY(-1.5px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
-    inset 0 -2px 3px rgba(120, 92, 45, 0.1),
-    0 3px 6px rgba(60, 42, 16, 0.16),
-    0 12px 22px rgba(60, 42, 16, 0.26);
+    inset 0 -1px 2px rgba(120, 92, 45, 0.1),
+    0 2px 4px rgba(60, 42, 16, 0.16),
+    0 6px 11px rgba(60, 42, 16, 0.24);
 }
 
 /* a real, visible keyboard-focus ring — distinct from (and in addition
@@ -269,6 +273,39 @@ body {
 }
 
 .view-on-map-button:active {
+  transform: translateY(1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.7),
+    inset 0 -1px 2px rgba(120, 92, 45, 0.12),
+    0 1px 2px rgba(60, 42, 16, 0.12),
+    0 3px 6px rgba(60, 42, 16, 0.16);
+}
+
+/* ─── Closing page's corner actions (Make It Yours / Call) — the SAME
+   raised-plaque rest/hover/active recipe as .view-on-map-button, at the
+   smaller corner scale those two buttons already use. Reused rather
+   than duplicated with new values, so both button families feel like
+   one hand. ─── */
+.footer-cta {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.footer-cta:hover,
+.footer-cta:focus-visible {
+  transform: translateY(-1.5px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    inset 0 -1px 2px rgba(120, 92, 45, 0.1),
+    0 2px 4px rgba(60, 42, 16, 0.16),
+    0 6px 11px rgba(60, 42, 16, 0.24);
+}
+
+.footer-cta:focus-visible {
+  outline: 2px solid var(--gold-invite);
+  outline-offset: 2px;
+}
+
+.footer-cta:active {
   transform: translateY(1px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.7),

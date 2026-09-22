@@ -22,6 +22,14 @@ interface Props {
    *  be re-measured against the new artwork, not just re-skinned. */
   bgPoster: string;
   reduceMotion: boolean;
+  /** fires whenever `phase` crosses out of "sealed" (or back into it, on
+   *  mount) — the reel pager's own gate reads this via a ref, not a
+   *  render, so the scratch canvas's stable callbacks are unaffected */
+  onRevealedChange?: (revealed: boolean) => void;
+  /** increments once per blocked forward attempt while sealed (from the
+   *  reel pager's gate) — this scene owns the actual notice UI, since it
+   *  already owns every other piece of this scene's presentation */
+  blockedSignal?: number;
 }
 
 /* ── LAYOUT — measured against the CURRENT save-the-date-background.jpg, pixel-
@@ -605,6 +613,8 @@ export default function DateReveal({
   weddingDate,
   bgPoster,
   reduceMotion,
+  onRevealedChange,
+  blockedSignal,
 }: Props) {
   const [phase, setPhase] = useState<Phase>(reduceMotion ? "settled" : "sealed");
   const [coverMounted, setCoverMounted] = useState(!reduceMotion);
@@ -613,8 +623,30 @@ export default function DateReveal({
   const [bloom, setBloom] = useState(false); // brief warm light across the art
   const [sprinkle, setSprinkle] = useState(false); // brief celebratory particles
   const [showScrollCue, setShowScrollCue] = useState(false); // date scene's scroll invitation
+  const [showGateNotice, setShowGateNotice] = useState(false); // "scratch to reveal" notice
   const sectionRef = useRef<HTMLElement | null>(null);
   const bloomTimers = useRef<number[]>([]);
+  const gateNoticeTimer = useRef(0);
+
+  // the reel pager's gate reads `phase !== "sealed"` through this — fires
+  // once on mount too, so the gate starts correctly informed even if this
+  // scene is revisited already-settled within the same session.
+  useEffect(() => {
+    onRevealedChange?.(phase !== "sealed");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
+
+  // a blocked forward attempt (from the reel pager's gate) pulses this
+  // scene's own small notice — never a second timer competing with the
+  // reveal's own timers above, just a brief show/auto-hide keyed to the
+  // signal's own value changing.
+  useEffect(() => {
+    if (!blockedSignal) return;
+    setShowGateNotice(true);
+    window.clearTimeout(gateNoticeTimer.current);
+    gateNoticeTimer.current = window.setTimeout(() => setShowGateNotice(false), 2400);
+    return () => window.clearTimeout(gateNoticeTimer.current);
+  }, [blockedSignal]);
 
   /* The phase read from inside STABLE callbacks (a ref, not state): the
      scratch canvas reads its callbacks once and must never be re-painted
@@ -921,6 +953,56 @@ export default function DateReveal({
         }}
       >
         <Countdown targetDate={weddingDate} visible={visible} />
+      </div>
+
+      {/* THE GATE NOTICE — only ever shown while sealed (a blocked
+          forward attempt cannot happen once revealed, since the gate
+          only governs leaving this scene while still sealed), so it can
+          never collide with the countdown or ScrollCue above/below it —
+          neither is visible yet at this point in the scene's own timeline.
+          A small, quiet plaque (the same paper-stock recipe as
+          ViewOnMapButton — warm ivory gradient, hairline gold border, no
+          glassmorphism), not a website toast: arrives with a soft rise,
+          holds briefly, fades — never a browser alert(). */}
+      <div
+        role="status"
+        aria-live="polite"
+        className="absolute inset-x-0 flex justify-center"
+        style={{
+          top: `${COUNTDOWN_TOP_DVH}dvh`,
+          zIndex: 11,
+          padding: "0 clamp(20px, 6vw, 36px)",
+          pointerEvents: "none",
+        }}
+      >
+        <span
+          style={{
+            display: sealed ? "inline-flex" : "none",
+            alignItems: "center",
+            gap: 8,
+            padding: "9px 18px",
+            maxWidth: "min(86vw, 340px)",
+            background: "linear-gradient(160deg, #fffdf8 0%, #f4ecda 100%)",
+            border: "1.25px solid rgba(184,148,63,0.55)",
+            borderRadius: 999,
+            boxShadow:
+              "inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 2px rgba(120,92,45,0.12), 0 2px 5px rgba(60,42,16,0.16), 0 6px 14px rgba(60,42,16,0.2)",
+            color: "#5c3f16",
+            fontFamily: "var(--font-invite-label)",
+            fontWeight: 600,
+            fontSize: "clamp(12.5px, 3vw, 13.5px)",
+            letterSpacing: "0.02em",
+            lineHeight: 1.3,
+            textAlign: "center",
+            opacity: showGateNotice ? 1 : 0,
+            transform: showGateNotice ? "translateY(0)" : "translateY(-8px)",
+            transition: reduceMotion
+              ? "opacity 0.3s ease"
+              : "opacity 0.4s ease, transform 0.5s cubic-bezier(0.16,1,0.3,1)",
+          }}
+        >
+          Scratch to reveal the date first.
+        </span>
       </div>
 
       {/* the scroll invitation — the same chevron + SCROLL NOW mark the

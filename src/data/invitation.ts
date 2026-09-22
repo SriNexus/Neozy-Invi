@@ -89,6 +89,11 @@ export interface RsvpConfig {
 }
 
 export interface ContactData {
+  /** the invitation's contact person — shown alongside `phone` on the
+   *  End section's call action; optional, so a configured phone with no
+   *  name still renders a working (if less personal) call button rather
+   *  than blocking on a field nothing currently requires */
+  name?: string;
   phone?: string;
   whatsapp?: string;
 }

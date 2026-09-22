@@ -144,6 +144,39 @@ interface Geom {
   /** measured height of the final scene (the album's last photograph) —
    *  used for the reel hand-off boundary */
   lastHeight: number;
+  /** the scene elements themselves, same order as `tops` — needed only to
+   *  check a forward move against an optional `ReelGate` (see below);
+   *  every other calculation in this file still works from `tops` alone */
+  els: HTMLElement[];
+}
+
+/**
+ * An optional single gate on ONE scene the reel already knows about (by
+ * DOM identity, via `isGated`) — e.g. "don't let the guest leave Save the
+ * Date before it's revealed." This is the pager's own decision logic
+ * consulted at the exact moment a forward move is about to commit, NOT a
+ * second navigation system: the gate never claims a gesture, never moves
+ * the scroll position itself, and blocking simply means the normal
+ * forward move that would have happened here does not.
+ */
+export interface ReelGate {
+  /** true for the one scene element this gate governs */
+  isGated: (el: HTMLElement) => boolean;
+  /** false while that scene is not yet allowed to be left going forward */
+  canLeave: () => boolean;
+  /** called once per blocked forward attempt (wheel notch or a released
+   *  touch drag) — never on a claim, a backward move, or a resting glide */
+  onBlocked: () => void;
+}
+
+/** True only when `fromIndex` is the gate's own scene AND it is not yet
+ *  allowed to be left. Used identically by the wheel and touch paths so
+ *  a guest cannot leave Save the Date forward through either gesture. */
+function blockedLeaving(gate: ReelGate | undefined, g: Geom, fromIndex: number): boolean {
+  if (!gate) return false;
+  const el = g.els[fromIndex];
+  if (!el || !gate.isGated(el)) return false;
+  return !gate.canLeave();
 }
 
 interface DragSession {
@@ -182,6 +215,7 @@ function readGeom(): Geom {
     tops,
     lastTop: count > 0 ? tops[count - 1] : 0,
     lastHeight: lastEl ? lastEl.getBoundingClientRect().height : 0,
+    els,
   };
 }
 
@@ -219,9 +253,11 @@ function topSceneIndex(y: number, tops: number[]): number {
   return i;
 }
 
-export function useReelPager(armed: boolean): void {
+export function useReelPager(armed: boolean, gate?: ReelGate): void {
   const armedRef = useRef(armed);
   armedRef.current = armed;
+  const gateRef = useRef(gate);
+  gateRef.current = gate;
   const reduceRef = useRef(prefersReducedMotion());
   const lockedRef = useRef(false);
   const rafRef = useRef(0);
@@ -309,7 +345,21 @@ export function useReelPager(armed: boolean): void {
       // up to the last scene's bottom, so a native rest is always eased
       // onto an exact scene top no matter which scene it lands in.
       if (y < 1 || y > g.lastTop + g.lastHeight + 1) return;
-      const target = g.tops[nearestIndex(y, g.tops)];
+      let idx = nearestIndex(y, g.tops);
+      // a native rest (scrollbar drag, keyboard) landed PAST a gated,
+      // not-yet-leavable scene — the wheel/touch paths already refuse to
+      // carry a gesture past it, but a native scroll bypasses both, so
+      // this same settle re-anchors it back onto the gated scene instead
+      // of easing onto wherever it actually stopped
+      const gate = gateRef.current;
+      if (gate) {
+        const gatedIdx = g.els.findIndex((el) => gate.isGated(el));
+        if (gatedIdx !== -1 && idx > gatedIdx && !gate.canLeave()) {
+          idx = gatedIdx;
+          gate.onBlocked();
+        }
+      }
+      const target = g.tops[idx];
       if (Math.abs(target - y) > 1) {
         // align with the SAME glide a gesture uses: a native rest (a
         // scrollbar drag, a keyboard press, an Android fling that stops
@@ -346,6 +396,15 @@ export function useReelPager(armed: boolean): void {
       // current one; past the last scene the browser owns the scroll
       if (y <= g.lastTop + g.lastHeight - 1) {
         const k = topSceneIndex(y, g.tops);
+        if (blockedLeaving(gateRef.current, g, k)) {
+          // a gated scene (Save the Date, not yet revealed) — swallow
+          // the gesture entirely rather than paging forward, and let the
+          // gate show its own notice; the guest stays exactly where
+          // they are, same as if this wheel notch never happened
+          gateRef.current?.onBlocked();
+          e.preventDefault();
+          return;
+        }
         if (k < g.count - 1) target = g.tops[k + 1];
       }
     } else {
@@ -568,6 +627,17 @@ export function useReelPager(armed: boolean): void {
     } else if (Math.abs(travelled) >= vh * 0.14) {
       // slow, deliberate swipe past the threshold
       delta = travelled > 0 ? 1 : -1;
+    }
+
+    // a gated scene (Save the Date, not yet revealed) — a forward swipe
+    // that would otherwise leave it snaps straight back to where the
+    // gesture started instead, and the gate shows its own notice. Only
+    // checked for a genuine forward move (delta > 0); backward and
+    // in-place gestures are never affected.
+    if (delta > 0 && blockedLeaving(gateRef.current, g, s.startIndex)) {
+      gateRef.current?.onBlocked();
+      pageTo(g.tops[s.startIndex]);
+      return;
     }
 
     // FIX: leaving the reel from its LAST scene (the album's final

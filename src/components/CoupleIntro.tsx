@@ -272,11 +272,16 @@ export default function CoupleIntro({
       {/* ── THE WELCOME TEXT — 9–13s in, 13–14.3s out, in the illustrated
           couple's own blank sky (measured at ~17%–43% of frame height;
           see the file header). Hard-confined to a 20dvh band, now
-          starting at 27dvh instead of 30dvh — a straight ~10% upward
-          shift of the whole composition (per an explicit correction),
-          not a redesign of the band: still fully inside the couple's
-          blank sky and still clear of the top florals above and the
-          couple's heads below (~43%), on every viewport. The band clips
+          starting at 25dvh — a further ~7.4% upward nudge from the
+          previous 27dvh (itself already a ~10% shift up from an earlier
+          30dvh), per an explicit "still slightly too low" correction.
+          Purely positional: still fully inside the couple's blank sky
+          and, since this moment and the couple content below are never
+          on screen at the same time (this fades out by 14.3s; the couple
+          content doesn't begin until 17s+ — see the file header), the
+          two bands' own dvh ranges can never actually collide on screen
+          even though this one's lower edge (45dvh) now sits past the
+          couple content's own measured start (~43dvh). The band clips
           (`overflow: hidden`) rather than ever let content escape it.
           `paddingTop` was pulled back (1.2dvh → 0.3dvh) and every
           inter-tier gap opened up ~10% in an earlier pass, per a "use
@@ -306,7 +311,7 @@ export default function CoupleIntro({
         aria-hidden="true"
         className="absolute inset-x-0 flex flex-col items-center pointer-events-none"
         style={{
-          top: "27dvh",
+          top: "25dvh",
           height: "20dvh",
           paddingTop: "0.3dvh",
           zIndex: 8,
@@ -438,9 +443,15 @@ export default function CoupleIntro({
           POSITION — measured against the gate film's arched frame:
           frame-by-frame measurement (see the file header, and brain.md
           "Gate film geometry") put the arch's clear interior at
-          ≈15%–70% of frame height, centre ≈42.7dvh. `top: 43dvh`
-          optically centres this whole group in THAT arch, exactly where
-          the old plaque used to sit.
+          ≈15%–70% of frame height, centre ≈42.7dvh — `top: 43dvh`
+          optically centred this whole group in THAT arch.
+          PASS — nudged to `top: 46dvh` (a further ~7% down from the
+          measured arch-centre), per an explicit "sits slightly too high"
+          correction: still well inside the arch's own ≈15–70dvh clear
+          interior (this group's own height, hands included, leaves
+          comfortable clearance on both sides at the new centre), so the
+          small intentional offset from the raw measurement doesn't
+          crowd the arch's own painted edge.
 
           Ink & shadow were adapted (not "redesigned") for the new
           context: the old names/parent-lines were tuned for CONTRAST
@@ -453,7 +464,7 @@ export default function CoupleIntro({
       <div
         className="absolute inset-x-0 flex flex-col items-center"
         style={{
-          top: "43dvh",
+          top: "46dvh",
           transform: "translateY(-50%)",
           paddingLeft: "clamp(16px, 5vw, 28px)",
           paddingRight: "clamp(16px, 5vw, 28px)",

@@ -188,6 +188,18 @@ export default function AdminEdit() {
 
         {/* Contact */}
         <Section title="Contact">
+          {/* Contact Person Name — shown alongside Phone on the public
+              End section's call action (see ClosingSection.tsx). Optional:
+              a configured phone with no name still renders a working
+              call button, just without a name label. */}
+          <Field label="Contact Person Name">
+            <input
+              value={draft.contact.name || ""}
+              onChange={(e) => updateContact("name", e.target.value)}
+              placeholder="e.g. Abhay"
+              className="admin-input"
+            />
+          </Field>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Phone">
               <input

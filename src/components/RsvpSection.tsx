@@ -31,25 +31,37 @@ function useInView<T extends HTMLElement>(threshold = 0.2) {
   return { ref, inView };
 }
 
+// PASS — enlarged per an explicit "form is too small for the page"
+// correction: padding and font both grew (16px also happens to be the
+// size that stops iOS Safari auto-zooming a focused input — a genuine
+// usability win, not just a visual one). Kept to a horizontal-only
+// padding bump (12→12 vertical, 14→15 horizontal) rather than growing
+// vertically too — this component's expanded state (guest count + event
+// selection, once a guest accepts) already fits ONE viewport with no
+// internal scroll with very little room to spare, so the vertical
+// budget went to what guests see first and always (this field, its
+// label, Accept/Decline, Seal & send) rather than spread evenly across
+// every control including the ones only the "accepting" path adds.
 const fieldStyle: React.CSSProperties = {
   width: "100%",
-  padding: "12px 14px",
+  padding: "12px 15px",
   background: "rgba(255,253,248,0.75)",
   border: "1px solid rgba(184,148,63,0.3)",
   borderRadius: 2,
   color: "var(--text-primary)",
   fontFamily: "var(--font-body)",
-  fontSize: 15,
+  fontSize: 16,
   outline: "none",
 };
 
 const labelStyle: React.CSSProperties = {
   display: "block",
-  marginBottom: 8,
+  marginBottom: 9,
   color: "var(--text-secondary)",
   fontFamily: "var(--font-sc)",
-  // kept above the parent-name baseline (13px), not just at it
-  fontSize: 14,
+  // raised from the parent-name baseline (13px/14px) as part of the
+  // same "form fields read too small" correction as fieldStyle above
+  fontSize: 15,
   letterSpacing: "0.16em",
   textTransform: "uppercase",
 };
@@ -113,7 +125,15 @@ export default function RsvpSection({
     <section
       data-reel-scene
       className="relative w-full overflow-hidden flex flex-col items-center justify-center"
-      style={{ height: "100dvh", padding: "clamp(18px,4.5vw,36px) clamp(20px,5vw,40px)" }}
+      style={{
+        height: "100dvh",
+        // vertical padding trimmed (was clamp(18,4.5vw,36) both axes) —
+        // this is exactly the "large empty space around the form"
+        // budget: giving it back to the form itself (see fieldStyle,
+        // Frame's own maxWidth below) lets the card actually use the
+        // viewport instead of floating in a wide margin
+        padding: "clamp(14px,3.5vw,30px) clamp(20px,5vw,40px)",
+      }}
     >
       <div
         ref={ref}
@@ -229,8 +249,7 @@ export default function RsvpSection({
                           borderRadius: 2,
                           color: on ? "var(--gold-invite)" : "var(--text-secondary)",
                           fontFamily: "var(--font-sc)",
-                          // kept above the parent-name baseline (13px), not just at it
-                          fontSize: 14,
+                          fontSize: 15,
                           letterSpacing: "0.1em",
                           textTransform: "uppercase",
                           transition: "all 0.25s ease",
@@ -287,7 +306,7 @@ export default function RsvpSection({
                           onClick={() => toggleEvent(ev.id)}
                           className="inline-flex items-center gap-1.5"
                           style={{
-                            padding: "7px 12px",
+                            padding: "8px 13px",
                             background: on ? "rgba(184,148,63,0.14)" : "rgba(255,253,248,0.5)",
                             border: `1px solid ${on ? "var(--gold-invite)" : "rgba(184,148,63,0.3)"}`,
                             borderRadius: 3,
@@ -298,8 +317,8 @@ export default function RsvpSection({
                           <span
                             className="flex items-center justify-center shrink-0"
                             style={{
-                              width: 14,
-                              height: 14,
+                              width: 15,
+                              height: 15,
                               borderRadius: "50%",
                               border: `1px solid ${on ? "var(--gold-invite)" : "rgba(184,148,63,0.4)"}`,
                               background: on ? "var(--gold-invite)" : "transparent",
@@ -344,8 +363,7 @@ export default function RsvpSection({
                   background: "linear-gradient(135deg, var(--gold-invite), var(--gold-invite-light))",
                   color: "#1c1408",
                   fontFamily: "var(--font-sc)",
-                  // kept above the parent-name baseline (13px), not just at it
-                  fontSize: 14,
+                  fontSize: 15,
                   letterSpacing: "0.13em",
                   textTransform: "uppercase",
                   borderRadius: 2,
@@ -377,7 +395,10 @@ function Frame({
     <div
       className="relative paper-grain mx-auto"
       style={{
-        maxWidth: "min(92vw, 520px)",
+        // widened slightly (was min(92vw,520px)) — pure width, no extra
+        // height cost, so it's the safest lever for "use more of the
+        // page" on the wider end of the mobile-first range (390/412px)
+        maxWidth: "min(95vw, 560px)",
         padding: "clamp(14px,3.5vw,26px) clamp(18px,5vw,36px)",
         background: "linear-gradient(158deg, rgba(252,249,242,0.9), rgba(244,236,220,0.86))",
         backdropFilter: "blur(8px)",
@@ -459,8 +480,8 @@ function Stepper({
   onChange: (n: number) => void;
 }) {
   const btn: React.CSSProperties = {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -477,16 +498,16 @@ function Stepper({
       </button>
       <span
         style={{
-          minWidth: 44,
+          minWidth: 46,
           textAlign: "center",
           fontFamily: "var(--font-display)",
           fontStyle: "italic",
-          fontSize: 22,
+          fontSize: 23,
           color: "var(--text-primary)",
           borderTop: "1px solid rgba(184,148,63,0.4)",
           borderBottom: "1px solid rgba(184,148,63,0.4)",
-          height: 34,
-          lineHeight: "34px",
+          height: 36,
+          lineHeight: "36px",
         }}
       >
         {value}
